@@ -19,40 +19,28 @@ pub const STD_LIB_NAMES: &[&str] = &[
     "borsh",
     "num_derive",
     "num_traits",
-    "thiserror"
+    "thiserror",
 ];
 
 pub const NATIVE_INSTRUCTIONS: &[&str] = &[
-  "SystemInstruction",
-  "LoaderInstruction",
-  "VoteInstruction",
-  "AddressLookupTableInstruction",
-  "CreateIdempotent",
+    "SystemInstruction",
+    "LoaderInstruction",
+    "VoteInstruction",
+    "AddressLookupTableInstruction",
+    "CreateIdempotent",
 ];
 
 pub const PROTECTED_INSTRUCTIONS: &[&str] = &[
-  "IdlCreateAccount",
-  "IdlCloseAccount",
-  "IdlWrite",
-  "IdlSetAuthority",
-  "IdlResizeAccount"
+    "IdlCreateAccount",
+    "IdlCloseAccount",
+    "IdlWrite",
+    "IdlSetAuthority",
+    "IdlResizeAccount",
 ];
 
-pub const REMOVABLE_KEYWORDS: &[&str] = &[
-  "Instruction",
-  "anchor",
-  "idl",
-  "space",
-  "index"
-];
+pub const REMOVABLE_KEYWORDS: &[&str] = &["Instruction", "anchor", "idl", "space", "index"];
 
-pub const FALSE_POSITIVES: &[&str] = &[
-  "anchor",
-  "idl",
-  "space",
-  "index",
-  "rs"
-];
+pub const FALSE_POSITIVES: &[&str] = &["anchor", "idl", "space", "index", "rs"];
 
 pub const COMMON_ACCOUNT_NAME_CHUNKS: &[&str] = &[
     "system_program",

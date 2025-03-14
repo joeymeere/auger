@@ -1,17 +1,12 @@
+use colored::Colorize;
 use std::path::PathBuf;
 use std::time::Instant;
-use colored::Colorize;
 
-use clap::Parser;
 use auger::{
-    dump_elf_meta, 
-    extract_from_file_with_parsers, 
-    write_results, 
-    utils::should_use_custom_parser,
-    AnchorProgramParser, 
-    ExtractConfig, 
-    NativeProgramParser
+    dump_elf_meta, extract_from_file_with_parsers, utils::should_use_custom_parser, write_results,
+    AnchorProgramParser, ExtractConfig, NativeProgramParser,
 };
+use clap::Parser;
 
 /// A tool for extracting information from sBPF binaries
 #[derive(Parser, Debug)]
@@ -42,14 +37,62 @@ fn main() {
 
     println!();
     println!("{}", "=============================".bright_red().bold());
-    println!("{}", "  ___                        ".bright_white().on_bright_red().bold());
-    println!("{}", " / _ \\                       ".bright_white().on_bright_red().bold());
-    println!("{}", "/ /_\\ \\_   _  __ _  ___ _ __ ".bright_white().on_bright_red().bold());
-    println!("{}", "|  _  | | | |/ _` |/ _ \\ '__|".bright_white().on_bright_red().bold());
-    println!("{}", "| | | | |_| | (_| |  __/ |   ".bright_white().on_bright_red().bold());
-    println!("{}", "\\_| |_/\\__,_|\\__, |\\___|_|   ".bright_white().on_bright_red().bold());
-    println!("{}", "              __/ |          ".bright_white().on_bright_red().bold());
-    println!("{}", "             |___/           ".bright_white().on_bright_red().bold());
+    println!(
+        "{}",
+        "  ___                        "
+            .bright_white()
+            .on_bright_red()
+            .bold()
+    );
+    println!(
+        "{}",
+        " / _ \\                       "
+            .bright_white()
+            .on_bright_red()
+            .bold()
+    );
+    println!(
+        "{}",
+        "/ /_\\ \\_   _  __ _  ___ _ __ "
+            .bright_white()
+            .on_bright_red()
+            .bold()
+    );
+    println!(
+        "{}",
+        "|  _  | | | |/ _` |/ _ \\ '__|"
+            .bright_white()
+            .on_bright_red()
+            .bold()
+    );
+    println!(
+        "{}",
+        "| | | | |_| | (_| |  __/ |   "
+            .bright_white()
+            .on_bright_red()
+            .bold()
+    );
+    println!(
+        "{}",
+        "\\_| |_/\\__,_|\\__, |\\___|_|   "
+            .bright_white()
+            .on_bright_red()
+            .bold()
+    );
+    println!(
+        "{}",
+        "              __/ |          "
+            .bright_white()
+            .on_bright_red()
+            .bold()
+    );
+    println!(
+        "{}",
+        "             |___/           "
+            .bright_white()
+            .on_bright_red()
+            .bold()
+    );
     println!("{}", "                             ".on_bright_red().bold());
     println!("{}", "=============================".bright_red().bold());
     println!();
@@ -63,16 +106,17 @@ fn main() {
 
     if args.dump_elf {
         match std::fs::read(&args.file) {
-            Ok(file_bytes) => {
-                match dump_elf_meta(&file_bytes, &args.output) {
-                    Ok(_) => {
-                        println!("{} {}", "ELF meta dumped to:".bright_black().bold(), 
-                                args.output.join("program-1.json").display());
-                    },
-                    Err(e) => {
-                        eprintln!("Error dumping ELF meta: {}", e);
-                        std::process::exit(1);
-                    }
+            Ok(file_bytes) => match dump_elf_meta(&file_bytes, &args.output) {
+                Ok(_) => {
+                    println!(
+                        "{} {}",
+                        "ELF meta dumped to:".bright_black().bold(),
+                        args.output.join("program-1.json").display()
+                    );
+                }
+                Err(e) => {
+                    eprintln!("Error dumping ELF meta: {}", e);
+                    std::process::exit(1);
                 }
             },
             Err(e) => {
@@ -81,54 +125,140 @@ fn main() {
             }
         }
     }
-    
+
     // extract text and instruction names
-    match extract_from_file_with_parsers(&args.file, Some(config), vec![Box::new(AnchorProgramParser::new()), Box::new(NativeProgramParser::new())]) {
+    match extract_from_file_with_parsers(
+        &args.file,
+        Some(config),
+        vec![
+            Box::new(AnchorProgramParser::new()),
+            Box::new(NativeProgramParser::new()),
+        ],
+    ) {
         Ok(result) => {
-            println!("{}", format!("\n==================== {} ====================", " STATS ".bright_white().on_bright_black().italic()).bright_black().bold());
-            println!("{} {}", "Starting extraction from offset:".bright_black().bold(), result.stats.start_offset);
-            println!("{} {}", "Extraction ended at position:".bright_black().bold(), result.stats.end_position);
-            println!("{} {}", "Total bytes processed:".bright_black().bold(), result.stats.bytes_processed);
-            println!("{}", "=================================================".bright_black().bold());
-            
-            println!("{}", format!("\n=================== {} ===================", " PROGRAM ".bright_white().on_bright_blue().italic()).bright_blue().bold());
+            println!(
+                "{}",
+                format!(
+                    "\n==================== {} ====================",
+                    " STATS ".bright_white().on_bright_black().italic()
+                )
+                .bright_black()
+                .bold()
+            );
+            println!(
+                "{} {}",
+                "Starting extraction from offset:".bright_black().bold(),
+                result.stats.start_offset
+            );
+            println!(
+                "{} {}",
+                "Extraction ended at position:".bright_black().bold(),
+                result.stats.end_position
+            );
+            println!(
+                "{} {}",
+                "Total bytes processed:".bright_black().bold(),
+                result.stats.bytes_processed
+            );
+            println!(
+                "{}",
+                "================================================="
+                    .bright_black()
+                    .bold()
+            );
+
+            println!(
+                "{}",
+                format!(
+                    "\n=================== {} ===================",
+                    " PROGRAM ".bright_white().on_bright_blue().italic()
+                )
+                .bright_blue()
+                .bold()
+            );
             if let Some(program_name) = &result.program_name {
-                println!("{} {}", "Detected program name:".bright_blue().bold(), program_name);
+                println!(
+                    "{} {}",
+                    "Detected program name:".bright_blue().bold(),
+                    program_name
+                );
             }
-            println!("{} {}", "Program type:".bright_blue().bold(), result.program_type);
+            println!(
+                "{} {}",
+                "Program type:".bright_blue().bold(),
+                result.program_type
+            );
             if let Some(linker) = &result.custom_linker {
                 println!("{} {}", "Linker:".bright_blue().bold(), linker);
-                
+
                 if should_use_custom_parser(result.custom_linker.as_deref()) {
-                    println!("{}", "  (You may neeed to use a custom parser)".bright_yellow().italic());
+                    println!(
+                        "{}",
+                        "  (You may neeed to use a custom parser)"
+                            .bright_yellow()
+                            .italic()
+                    );
                 }
             }
-            println!("{}", "=================================================".bright_blue().bold());
-            
-            println!("\n{} {}", format!("Found {} unique instructions:", result.instructions.len()).bright_green().bold(), "");
+            println!(
+                "{}",
+                "================================================="
+                    .bright_blue()
+                    .bold()
+            );
+
+            println!(
+                "\n{} {}",
+                format!("Found {} unique instructions:", result.instructions.len())
+                    .bright_green()
+                    .bold(),
+                ""
+            );
             for instruction in &result.instructions {
                 println!("- {}", instruction);
             }
-            
-            println!("\n{} {}", format!("Found {} protected instructions:", result.protected_instructions.len()).bright_green().bold(), "");
+
+            println!(
+                "\n{} {}",
+                format!(
+                    "Found {} protected instructions:",
+                    result.protected_instructions.len()
+                )
+                .bright_green()
+                .bold(),
+                ""
+            );
             for instruction in &result.protected_instructions {
                 println!("- {}", instruction);
             }
-            
-            println!("\n{} {}", format!("Found {} syscalls:", result.syscalls.len()).bright_green().bold(), "");
+
+            println!(
+                "\n{} {}",
+                format!("Found {} syscalls:", result.syscalls.len())
+                    .bright_green()
+                    .bold(),
+                ""
+            );
             for syscall in &result.syscalls {
                 println!("- {}", syscall);
             }
-            
-            println!("\n{} {}", format!("Found {} source files:", result.files.len()).bright_green().bold(), "");
+
+            println!(
+                "\n{} {}",
+                format!("Found {} source files:", result.files.len())
+                    .bright_green()
+                    .bold(),
+                ""
+            );
             if !result.files.is_empty() {
                 let mut projects = std::collections::HashMap::new();
                 for file in &result.files {
-                    projects.entry(file.project.clone())
+                    projects
+                        .entry(file.project.clone())
                         .or_insert_with(Vec::new)
                         .push(file);
                 }
-                
+
                 for (project, files) in projects {
                     println!("\n{} {}", "Project:".bright_green().bold(), project);
                     for file in files {
@@ -136,18 +266,31 @@ fn main() {
                     }
                 }
             }
-            
+
             match write_results(&result, &args.output) {
                 Ok(_) => {
                     let prefix = match &result.program_name {
                         Some(name) => format!("{}_", name),
                         None => String::new(),
                     };
-                    
+
                     println!("\n{}", "Results written to:".bright_green().bold());
-                    println!("- {}", args.output.join(format!("{}text_dump.txt", prefix)).display());
-                    println!("- {}", args.output.join(format!("{}result.json", prefix)).display());
-                    println!("- {}", args.output.join(format!("{}manifest.json", prefix)).display());
+                    println!(
+                        "- {}",
+                        args.output
+                            .join(format!("{}text_dump.txt", prefix))
+                            .display()
+                    );
+                    println!(
+                        "- {}",
+                        args.output.join(format!("{}result.json", prefix)).display()
+                    );
+                    println!(
+                        "- {}",
+                        args.output
+                            .join(format!("{}manifest.json", prefix))
+                            .display()
+                    );
                 }
                 Err(e) => {
                     eprintln!("Error writing results: {}", e);
@@ -162,5 +305,9 @@ fn main() {
     }
 
     let duration = start_time.elapsed();
-    println!("\n{} {:.2?}", "Total execution time:".bright_yellow().bold(), duration);
-} 
+    println!(
+        "\n{} {:.2?}",
+        "Total execution time:".bright_yellow().bold(),
+        duration
+    );
+}

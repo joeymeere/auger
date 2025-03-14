@@ -66,12 +66,15 @@ fn main() {
 
 ## Roadmap
 
+- [ ] Detect alternative linker usage
+  - [ ] Use custom parsers based on linker use
 - [ ] Infer instruction discriminators from extracted names
 - [ ] Find relevant data structures
   - [ ] Associate field names and types
 - [ ] Extract account names associated with instructions
   - [ ] Associate data structures with those account names (default to AccountInfo)
     - [ ] Generate discriminators for each account
-- [ ] Handle custom linkers (MEV fuckers)
-  - [ ] Search for `.comment` section in the ELF
 - [ ] Construct a program IDL from the extracted information
+- [ ] Use fine-tuned DistilBERT to improve text pattern extraction
+  - [ ] Identify chunked data structure names (pascal)
+  - [ ] Catch missed matches in parsers for blobs of unspaced mixed casing

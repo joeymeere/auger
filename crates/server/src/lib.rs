@@ -1,5 +1,5 @@
-pub mod utils;
 pub mod auth;
+pub mod utils;
 
-pub use utils::process_dump;
 pub use auth::{api_key_auth, ApiKeys};
+pub use utils::process_dump;

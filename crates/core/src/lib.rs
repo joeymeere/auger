@@ -7,11 +7,11 @@ pub mod consts;
 pub mod hash;
 pub mod model;
 pub mod parser;
-pub mod writer;
 pub mod utils;
+pub mod writer;
 
 pub use model::{ExtractConfig, ExtractResult, ExtractStats, Instruction, SourceFile};
-pub use parser::{BpfParser, ProgramParser, AnchorProgramParser, NativeProgramParser, ProgramType};
+pub use parser::{AnchorProgramParser, BpfParser, NativeProgramParser, ProgramParser, ProgramType};
 pub use writer::FileWriter;
 
 #[derive(Error, Debug)]
@@ -30,13 +30,19 @@ pub enum ExtractError {
     SerializationError(#[from] serde_json::Error),
 }
 
-pub fn extract_from_bytes(file_bytes: &[u8], config: Option<ExtractConfig>) -> Result<ExtractResult, ExtractError> {
+pub fn extract_from_bytes(
+    file_bytes: &[u8],
+    config: Option<ExtractConfig>,
+) -> Result<ExtractResult, ExtractError> {
     let config = config.unwrap_or_default();
     parser::extract_from_bytes(&file_bytes, config)
 }
 
 /// Extracts valid text from an sBPF binary, and attempts to match instruction names
-pub fn extract_from_file(file_path: &Path, config: Option<ExtractConfig>) -> Result<ExtractResult, ExtractError> {
+pub fn extract_from_file(
+    file_path: &Path,
+    config: Option<ExtractConfig>,
+) -> Result<ExtractResult, ExtractError> {
     let config = config.unwrap_or_default();
 
     if file_path.extension().unwrap() != "so" {
@@ -49,9 +55,9 @@ pub fn extract_from_file(file_path: &Path, config: Option<ExtractConfig>) -> Res
 
 /// Extracts valid text from an sBPF binary using custom parsers
 pub fn extract_from_file_with_parsers(
-    file_path: &Path, 
+    file_path: &Path,
     config: Option<ExtractConfig>,
-    parsers: Vec<Box<dyn ProgramParser>>
+    parsers: Vec<Box<dyn ProgramParser>>,
 ) -> Result<ExtractResult, ExtractError> {
     let config = config.unwrap_or_default();
 
@@ -76,7 +82,7 @@ pub fn write_results(result: &ExtractResult, base_path: &Path) -> Result<(), Ext
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_extract_from_file() {
         let so_path = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -85,25 +91,34 @@ mod tests {
             .parent()
             .unwrap()
             .join("spaceman.so");
-        
+
         let result = extract_from_file(&so_path, None).unwrap();
-        
-        println!("Starting extraction from offset: {}", result.stats.start_offset);
-        println!("Extraction ended at position: {}", result.stats.end_position);
+
+        println!(
+            "Starting extraction from offset: {}",
+            result.stats.start_offset
+        );
+        println!(
+            "Extraction ended at position: {}",
+            result.stats.end_position
+        );
         println!("Total bytes processed: {}", result.stats.bytes_processed);
-        
+
         println!("\nFound {} unique instructions:", result.instructions.len());
         for instruction in &result.instructions {
             println!("- {}", instruction);
         }
-        
+
         println!("\nFound {} source files:", result.files.len());
         for file in &result.files {
             println!("- {} (project: {})", file.path, file.project);
         }
-        
+
         write_results(&result, Path::new(".")).unwrap();
-        
-        assert!(!result.instructions.is_empty(), "No instructions were found");
+
+        assert!(
+            !result.instructions.is_empty(),
+            "No instructions were found"
+        );
     }
-} 
+}

@@ -22,7 +22,7 @@ use tracing_subscriber::{filter, prelude::*};
 
 use auger::{extract_from_bytes, ExtractConfig};
 
-use auger_server::{utils::process_dump, api_key_auth};
+use auger_server::{api_key_auth, utils::process_dump};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -37,8 +37,12 @@ async fn main() -> Result<()> {
 
     info!("Starting Auger API");
 
-    let rpc_url = std::env::var("SOLANA_RPC_URL").unwrap_or_else(|_| "https://api.mainnet-beta.solana.com".to_string());
-    let rpc_client = Arc::new(RpcClient::new_with_timeout(rpc_url, Duration::from_secs(30)));
+    let rpc_url = std::env::var("SOLANA_RPC_URL")
+        .unwrap_or_else(|_| "https://api.mainnet-beta.solana.com".to_string());
+    let rpc_client = Arc::new(RpcClient::new_with_timeout(
+        rpc_url,
+        Duration::from_secs(30),
+    ));
 
     let app = Router::new()
         .route("/status", get(status_handler))
@@ -95,26 +99,32 @@ async fn destructure_handler(
     Query(params): Query<DestructureQuery>,
     state: axum::extract::State<AppState>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let program_id = params.program_id.parse::<Pubkey>()
+    let program_id = params
+        .program_id
+        .parse::<Pubkey>()
         .map_err(|e| AppError::BadRequest(format!("Invalid program ID: {}", e)))?;
 
-    let program_data = process_dump(&state.rpc_client, Some(program_id)).expect("Failed to fetch program data");
+    let program_data =
+        process_dump(&state.rpc_client, Some(program_id)).expect("Failed to fetch program data");
 
-    let extract_result = 
-        extract_from_bytes(
-            program_data.as_slice(), 
-            Some(ExtractConfig { 
-                ff_sequence_length: 64, 
-                program_header_index: 0, 
-                replace_non_printable: true 
-            }
-        ))
-        .map_err(|e| AppError::InternalError(format!("Failed to extract data: {:?}", e)))?;
+    let extract_result = extract_from_bytes(
+        program_data.as_slice(),
+        Some(ExtractConfig {
+            ff_sequence_length: 64,
+            program_header_index: 0,
+            replace_non_printable: true,
+        }),
+    )
+    .map_err(|e| AppError::InternalError(format!("Failed to extract data: {:?}", e)))?;
 
     let mut result = serde_json::to_value(extract_result)
         .map_err(|e| AppError::InternalError(format!("Failed to serialize result: {}", e)))?;
 
-    result.as_object_mut().expect("Failed to convert to object").remove("text").expect("Failed to remove raw text");
+    result
+        .as_object_mut()
+        .expect("Failed to convert to object")
+        .remove("text")
+        .expect("Failed to remove raw text");
 
     Ok(Json(result))
 }

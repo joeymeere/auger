@@ -77,4 +77,4 @@ pub struct ExtractStats {
     pub instruction_count: usize,
     /// Number of unique source files found
     pub file_count: usize,
-} 
+}

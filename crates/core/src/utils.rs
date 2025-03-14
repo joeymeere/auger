@@ -59,17 +59,20 @@ pub fn normalize_project_name(project: &str, main_project: &str) -> String {
     if project.ends_with(main_project) && project.len() > main_project.len() {
         return main_project.to_string();
     }
-    
+
     project.to_string()
 }
 
-pub fn count_projects_by_name<T>(files: &[T], project_getter: impl Fn(&T) -> &str) -> HashMap<String, usize> {
+pub fn count_projects_by_name<T>(
+    files: &[T],
+    project_getter: impl Fn(&T) -> &str,
+) -> HashMap<String, usize> {
     let mut project_counts = HashMap::new();
     for file in files {
         let project = project_getter(file).to_string();
         *project_counts.entry(project).or_insert(0) += 1;
     }
-    
+
     project_counts
 }
 
@@ -79,8 +82,9 @@ pub fn find_main_project<T>(files: &[T], project_getter: impl Fn(&T) -> &str) ->
     for std_lib in crate::consts::STD_LIB_NAMES {
         filtered_counts.remove(*std_lib);
     }
-    
-    filtered_counts.into_iter()
+
+    filtered_counts
+        .into_iter()
         .max_by_key(|(_, count)| *count)
         .map(|(project, _)| project)
 }
@@ -92,18 +96,21 @@ pub fn normalize_source_path(path: &str) -> String {
     }
     if !normalized.starts_with("programs/") && !normalized.contains("/src/") {
         if normalized.starts_with("src/") {
-            normalized = format!("src/{}", normalized.strip_prefix("src/").unwrap_or(&normalized));
+            normalized = format!(
+                "src/{}",
+                normalized.strip_prefix("src/").unwrap_or(&normalized)
+            );
         } else {
             normalized = format!("src/{}", normalized);
         }
     }
     if normalized.contains("/src/src/") {
-           normalized = normalized.replace("/src/src/", "/src/");
+        normalized = normalized.replace("/src/src/", "/src/");
     }
     if !normalized.ends_with(".rs") && !normalized.contains(".") {
         normalized = format!("{}.rs", normalized);
     }
-    
+
     normalized
 }
 
@@ -114,8 +121,6 @@ pub fn should_use_custom_parser(linker_info: Option<&str>) -> bool {
             return true;
         }
     }
-    
+
     false
 }
-
-
