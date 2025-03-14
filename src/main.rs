@@ -18,8 +18,8 @@ struct Args {
     /// Number of consecutive 0xFF to mark as EOT
     #[clap(short = 's', long, default_value = "8")]
     ff_sequence: usize,
-    /// Program header index to use for offset (default is 1)
-    #[clap(short = 'i', long, default_value = "1")]
+    /// Program header index to use for offset (default is 0)
+    #[clap(short = 'i', long, default_value = "0")]
     header_index: usize,
     /// Don't replace null bytes and non-printable characters with spaces
     #[clap(short, long)]

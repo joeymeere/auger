@@ -11,7 +11,7 @@ pub mod writer;
 pub mod utils;
 
 pub use model::{ExtractConfig, ExtractResult, ExtractStats, Instruction, SourceFile};
-pub use parser::BpfParser;
+pub use parser::{BpfParser, ProgramParser, AnchorProgramParser, NativeProgramParser, ProgramType};
 pub use writer::FileWriter;
 
 #[derive(Error, Debug)]
@@ -40,6 +40,22 @@ pub fn extract_from_file(file_path: &Path, config: Option<ExtractConfig>) -> Res
 
     let file_bytes = std::fs::read(file_path)?;
     parser::extract_from_bytes(&file_bytes, config)
+}
+
+/// Extracts valid text from an sBPF binary using custom parsers
+pub fn extract_from_file_with_parsers(
+    file_path: &Path, 
+    config: Option<ExtractConfig>,
+    parsers: Vec<Box<dyn ProgramParser>>
+) -> Result<ExtractResult, ExtractError> {
+    let config = config.unwrap_or_default();
+
+    if file_path.extension().unwrap() != "so" {
+        return Err(ExtractError::InvalidFileExtension);
+    }
+
+    let file_bytes = std::fs::read(file_path)?;
+    parser::extract_from_bytes_with_parsers(&file_bytes, config, parsers)
 }
 
 /// Dumps the ELF metadata to a JSON file
