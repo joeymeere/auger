@@ -35,7 +35,7 @@ pub fn extract_from_bytes(
     config: Option<ExtractConfig>,
 ) -> Result<ExtractResult, ExtractError> {
     let config = config.unwrap_or_default();
-    parser::extract_from_bytes(&file_bytes, config)
+    parser::extract_from_bytes(file_bytes, config)
 }
 
 /// Extracts valid text from an sBPF binary, and attempts to match instruction names
@@ -50,7 +50,7 @@ pub fn extract_from_file(
     }
 
     let file_bytes = std::fs::read(file_path)?;
-    parser::extract_from_bytes(&file_bytes, config)
+    parser::extract_from_bytes(file_bytes.as_slice(), config)
 }
 
 /// Extracts valid text from an sBPF binary using custom parsers
@@ -66,7 +66,7 @@ pub fn extract_from_file_with_parsers(
     }
 
     let file_bytes = std::fs::read(file_path)?;
-    parser::extract_from_bytes_with_parsers(&file_bytes, config, parsers)
+    parser::extract_from_bytes_with_parsers(file_bytes.as_slice(), config, parsers)
 }
 
 /// Dumps the ELF metadata to a JSON file

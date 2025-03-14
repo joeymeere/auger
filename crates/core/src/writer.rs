@@ -20,6 +20,12 @@ pub struct Manifest {
 
 pub struct FileWriter;
 
+impl Default for FileWriter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FileWriter {
     pub fn new() -> Self {
         Self

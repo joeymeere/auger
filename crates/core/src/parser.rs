@@ -231,11 +231,18 @@ pub struct BpfParser {
     parsers: Vec<Box<dyn ProgramParser>>,
 }
 
+impl Default for BpfParser {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BpfParser {
     pub fn new() -> Self {
-        let mut parsers: Vec<Box<dyn ProgramParser>> = Vec::new();
-        parsers.push(Box::new(AnchorProgramParser::new()));
-        parsers.push(Box::new(NativeProgramParser::new()));
+        let parsers: Vec<Box<dyn ProgramParser>> = vec![
+            Box::new(AnchorProgramParser::new()),
+            Box::new(NativeProgramParser::new()),
+        ];
 
         Self { parsers }
     }
@@ -470,6 +477,7 @@ impl BpfParser {
         source_files
     }
 
+    /*
     fn extract_standard_paths(&self, text: &str, source_files: &mut HashSet<SourceFile>) {
         let file_re = Regex::new(r"programs/[^.]+\.rs").unwrap();
         let project_re = Regex::new(r"programs/([^/]+)/").unwrap();
@@ -504,6 +512,7 @@ impl BpfParser {
 
         process_matches(&file_re);
     }
+    */
 
     fn extract_syscalls(&self, program: &Program) -> HashSet<String> {
         let mut syscalls = HashSet::new();

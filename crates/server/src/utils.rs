@@ -36,10 +36,10 @@ pub fn process_dump(
                             let program_data = &programdata_account.data[offset..];
                             Ok(program_data.to_vec())
                         } else {
-                            Err(format!("Program {account_pubkey} has been closed").into())
+                            Err(format!("Program {account_pubkey} has been closed"))
                         }
                     } else {
-                        Err(format!("Program {account_pubkey} has been closed").into())
+                        Err(format!("Program {account_pubkey} has been closed"))
                     }
                 } else if let Ok(UpgradeableLoaderState::Buffer { .. }) = account.deserialize_data()
                 {
@@ -49,16 +49,15 @@ pub fn process_dump(
                 } else {
                     Err(format!(
                         "{account_pubkey} is not an upgradeable loader buffer or program account"
-                    )
-                    .into())
+                    ))
                 }
             } else {
-                Err(format!("{account_pubkey} is not an SBF program").into())
+                Err(format!("{account_pubkey} is not an SBF program"))
             }
         } else {
-            Err(format!("Unable to find the account {account_pubkey}").into())
+            Err(format!("Unable to find the account {account_pubkey}"))
         }
     } else {
-        Err("No account specified".into())
+        Err(format!("No account specified"))
     }
 }
