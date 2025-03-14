@@ -30,6 +30,11 @@ pub enum ExtractError {
     SerializationError(#[from] serde_json::Error),
 }
 
+pub fn extract_from_bytes(file_bytes: &[u8], config: Option<ExtractConfig>) -> Result<ExtractResult, ExtractError> {
+    let config = config.unwrap_or_default();
+    parser::extract_from_bytes(&file_bytes, config)
+}
+
 /// Extracts valid text from an sBPF binary, and attempts to match instruction names
 pub fn extract_from_file(file_path: &Path, config: Option<ExtractConfig>) -> Result<ExtractResult, ExtractError> {
     let config = config.unwrap_or_default();

@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 use crate::model::ExtractResult;
 use crate::ExtractError;
 
-/// Writer for BPF extraction results
 #[derive(Serialize, Deserialize)]
 pub struct Manifest {
     pub program_name: String,
@@ -21,17 +20,15 @@ pub struct Manifest {
 pub struct FileWriter;
 
 impl FileWriter {
-    /// Creates a new BpfWriter instance
     pub fn new() -> Self {
         Self
     }
 
-    /// Dumps the ELF metadata to a JSON file
     pub fn dump_elf_meta(&self, file_bytes: &[u8], base_path: &Path) -> Result<(), ExtractError> {
         let program = Program::from_bytes(file_bytes)
             .map_err(|e| ExtractError::ProgramParseError(format!("{:?}", e)))?;
         
-        let json = program.to_json()
+        let json = serde_json::to_string_pretty(&program)
             .map_err(|e| ExtractError::ProgramParseError(format!("{:?}", e)))?;
         
         fs::write(base_path.join("elf-meta.json"), json)?;
@@ -39,7 +36,6 @@ impl FileWriter {
         Ok(())
     }
 
-    /// Writes extraction results to files
     pub fn write_results(&self, result: &ExtractResult, base_path: &Path) -> Result<(), ExtractError> {
         fs::create_dir_all(base_path)?;
         
@@ -85,13 +81,13 @@ impl FileWriter {
     }
 }
 
-/// Dumps the ELF metadata to a JSON file
+/// dumps the ELF metadata to a JSON file
 pub fn dump_elf_meta(file_bytes: &[u8], base_path: &Path) -> Result<(), ExtractError> {
     let writer = FileWriter::new();
     writer.dump_elf_meta(file_bytes, base_path)
 }
 
-/// Writes extraction results to files
+/// writes extraction results to files
 pub fn write_results(result: &ExtractResult, base_path: &Path) -> Result<(), ExtractError> {
     let writer = FileWriter::new();
     writer.write_results(result, base_path)

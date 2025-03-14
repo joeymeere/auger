@@ -7,19 +7,19 @@ use crate::consts::*;
 use crate::model::{ExtractConfig, ExtractResult, ExtractStats, SourceFile};
 use crate::ExtractError;
 
-// Map to strings
 pub enum ProgramType {
     Anchor,
     Native,
     Custom,
 }
 
-/// Framework-specific instruction parsers
 pub trait ProgramParser {
     fn parse_instructions(&self, text: &str) -> HashSet<String>;
     fn can_handle(&self, text: &str) -> bool;
     fn program_type(&self) -> &str;
     fn get_protected_instructions(&self, instructions: &HashSet<String>) -> HashSet<String>;
+    fn extract_source_files(&self, text: &str) -> HashSet<SourceFile>;
+    fn extract_standard_paths(&self, text: &str, source_files: &mut HashSet<SourceFile>);
 }
 
 pub struct AnchorProgramParser;
@@ -48,7 +48,7 @@ impl ProgramParser for AnchorProgramParser {
     fn parse_instructions(&self, text: &str) -> HashSet<String> {
         let mut instructions = HashSet::new();
         
-        // look for "Instruction: " corresponding to logs included w/ anchor programs
+        // look for "Instruction: "
         let re = Regex::new(r"Instruction: ([A-Za-z0-9]+)").unwrap();
         
         for cap in re.captures_iter(text) {
@@ -73,7 +73,6 @@ impl ProgramParser for AnchorProgramParser {
             }
         }
         
-        // look for words followed by "Instruction"
         let additional_re = Regex::new(r"([A-Za-z0-9]+)Instruction").unwrap();
         for cap in additional_re.captures_iter(text) {
             if let Some(instruction_name) = cap.get(1) {
@@ -104,9 +103,48 @@ impl ProgramParser for AnchorProgramParser {
             .cloned()
             .collect()
     }
+
+    fn extract_source_files(&self, text: &str) -> HashSet<SourceFile> {
+        let mut source_files = HashSet::new();
+        
+        self.extract_standard_paths(text, &mut source_files);
+        
+        source_files
+    }
+    
+    fn extract_standard_paths(&self, text: &str, source_files: &mut HashSet<SourceFile>) {
+        let file_re = Regex::new(r"programs/[^.]+\.rs").unwrap();
+        let project_re = Regex::new(r"programs/([^/]+)/").unwrap();
+        
+        let mut process_matches = |regex: &Regex| {
+            for cap in regex.captures_iter(text) {
+                if let Some(path_match) = cap.get(0) {
+                    if let Some(project_match) = project_re.captures(path_match.as_str()) {
+                        let project = project_match.get(1).map(|m| m.as_str().to_string()).unwrap_or_default();
+                        let mut relative_path = path_match.as_str().to_string();
+                        
+                        if let Some(rs_pos) = relative_path.find(".rs") {
+                            relative_path = relative_path[0..rs_pos+3].to_string();
+                        }
+                        
+                        relative_path = crate::utils::normalize_source_path(&relative_path);
+                        
+                        let path = format!("programs/{}/src/{}", project, relative_path);
+                    
+                        source_files.insert(SourceFile {
+                                path,
+                                project: project.clone(),
+                                relative_path,
+                        });
+                    }
+                }
+            }
+        };
+        
+        process_matches(&file_re);
+    }
 }
 
-/// Parser for Native programs
 pub struct NativeProgramParser;
 
 impl NativeProgramParser {
@@ -119,7 +157,7 @@ impl ProgramParser for NativeProgramParser {
     fn parse_instructions(&self, text: &str) -> HashSet<String> {
         let mut instructions = HashSet::new();
         
-        // Try "IX: " pattern for native programs
+        // try "IX: " pattern for native programs
         let native_re = Regex::new(r"IX: ([A-Za-z0-9]+)").unwrap();
         
         for cap in native_re.captures_iter(text) {
@@ -134,28 +172,63 @@ impl ProgramParser for NativeProgramParser {
         instructions
     }
     
+    // Should probably always return true
     fn can_handle(&self, text: &str) -> bool {
+        // match IX: pattern
         let re = Regex::new(r"IX: ([A-Za-z0-9]+)").unwrap();
-        re.is_match(text)
+        // match <program_name>/src/<file_name>.rs
+        let file_re = Regex::new(r"[a-zA-Z0-9_-]+/src/[a-zA-Z0-9_/-]+\.rs").unwrap();
+        re.is_match(text) || file_re.is_match(text)
+    }
+
+    // ???? (programs/[^.]+\.rs|[a-zA-Z0-9_-]+/src/[^.]+\.rs)
+    fn extract_source_files(&self, text: &str) -> HashSet<SourceFile> {
+        let mut source_files = HashSet::new();
+        
+        self.extract_standard_paths(text, &mut source_files);
+        
+        source_files
     }
     
+    fn extract_standard_paths(&self, text: &str, source_files: &mut HashSet<SourceFile>) {
+        let file_re = Regex::new(r"[a-zA-Z0-9_-]+/src/[a-zA-Z0-9_/-]+\.rs").unwrap();
+        
+        for match_result in file_re.find_iter(text) {
+            let path = match_result.as_str().to_string();
+            
+            if path.starts_with("programs/") {
+                continue;
+            }
+
+            let parts: Vec<&str> = path.split("/src/").collect();
+            if parts.len() >= 2 {
+                let project = parts[0].to_string();
+                let mut relative_path = format!("src/{}", parts[1]);
+                
+                relative_path = crate::utils::normalize_source_path(&relative_path);   
+                source_files.insert(SourceFile {
+                    path: format!("{}/{}", project, relative_path),
+                    project,
+                    relative_path,
+                });
+            }
+        }
+    }
+
     fn program_type(&self) -> &str {
         "native"
     }
     
     fn get_protected_instructions(&self, _instructions: &HashSet<String>) -> HashSet<String> {
-        // Native programs don't have protected instructions in the same way Anchor does
+        // native programs don't have idls, therefore no protected instructions
         HashSet::new()
     }
 }
-
-/// Parser for extracting data from BPF binaries
 pub struct BpfParser {
     parsers: Vec<Box<dyn ProgramParser>>,
 }
 
 impl BpfParser {
-    /// Creates a new BpfParser instance
     pub fn new() -> Self {
         let mut parsers: Vec<Box<dyn ProgramParser>> = Vec::new();
         parsers.push(Box::new(AnchorProgramParser::new()));
@@ -164,17 +237,85 @@ impl BpfParser {
         Self { parsers }
     }
     
-    /// Creates a new BpfParser instance with only the specified parsers
     pub fn with_parsers(parsers: Vec<Box<dyn ProgramParser>>) -> Self {
         Self { parsers }
     }
     
-    /// Register a new program parser
     pub fn register_parser(&mut self, parser: Box<dyn ProgramParser>) {
         self.parsers.push(parser);
     }
 
-    /// Extracts text from a byte slice, and attempts to match instruction names
+    fn normalize_source_files(&self, source_files: HashSet<SourceFile>, program_name: Option<String>) -> HashSet<SourceFile> {
+        use std::collections::HashMap;
+        
+        if source_files.is_empty() {
+            return source_files;
+        }
+        
+        let filtered_files: HashSet<SourceFile> = source_files
+            .into_iter()
+            .filter(|file| !crate::consts::STD_LIB_NAMES.contains(&file.project.as_str()))
+            .collect();
+        
+        if filtered_files.is_empty() {
+            return filtered_files;
+        }
+        
+        let files_vec: Vec<SourceFile> = filtered_files.into_iter().collect();
+        let main_project = match program_name {
+            Some(name) => name,
+            None => crate::utils::find_main_project(&files_vec, |f| &f.project).unwrap_or_default()
+        };
+        
+        let mut normalized_files = HashSet::new();
+        let mut path_map: HashMap<String, Vec<SourceFile>> = HashMap::new();
+        
+        for file in files_vec {
+            let normalized_project = crate::utils::normalize_project_name(&file.project, &main_project);
+            let normalized_rel_path = crate::utils::normalize_source_path(&file.relative_path);
+            
+            let normalized_file = SourceFile {
+                path: if normalized_project != file.project {
+                    format!("{}/{}", normalized_project, normalized_rel_path)
+                } else if normalized_rel_path != file.relative_path {
+                    format!("{}/{}", normalized_project, normalized_rel_path)
+                } else {
+                    file.path
+                },
+                project: normalized_project,
+                relative_path: normalized_rel_path,
+            };
+            
+            path_map.entry(normalized_file.relative_path.clone())
+                .or_insert_with(Vec::new)
+                .push(normalized_file);
+        }
+        
+        for (_, mut files) in path_map {
+            if files.len() == 1 {
+                normalized_files.insert(files.pop().unwrap());
+            } else {
+                let main_project_idx = files.iter().position(|f| f.project == main_project);
+                if let Some(idx) = main_project_idx {
+                    normalized_files.insert(files.remove(idx));
+                } else {
+                    let shortest_project_idx = files.iter()
+                        .enumerate()
+                        .min_by_key(|(_, f)| f.project.len())
+                        .map(|(idx, _)| idx);
+                    
+                    if let Some(idx) = shortest_project_idx {
+                        normalized_files.insert(files.remove(idx));
+                    } else {
+                        normalized_files.insert(files.pop().unwrap());
+                    }
+                }
+            }
+        }
+        
+        normalized_files
+    }
+
     pub fn extract_from_bytes(&self, bytes: &[u8], config: ExtractConfig) -> Result<ExtractResult, ExtractError> {
         let program = Program::from_bytes(bytes)
             .map_err(|e| ExtractError::ProgramParseError(format!("{:?}", e)))?;
@@ -229,9 +370,8 @@ impl BpfParser {
             return Err(ExtractError::NoTextExtracted);
         }
 
-        // Extract instructions, files, and other data
         let (instructions, protected_instructions, program_type) = self.extract_instructions(&extracted_text);
-        let source_files = self.extract_source_files(&extracted_text);
+        let mut source_files = self.extract_source_files(&extracted_text);
         let syscalls = self.extract_syscalls(&program);
         
         let instructions_vec: Vec<String> = instructions
@@ -241,22 +381,15 @@ impl BpfParser {
             .collect();
 
         let protected_instructions_vec: Vec<String> = protected_instructions.into_iter().collect();
+        
+        let source_files_vec: Vec<SourceFile> = source_files.into_iter().collect();
+        
+        let program_name = crate::utils::find_main_project(&source_files_vec, |f| &f.project);
+        
+        source_files = self.normalize_source_files(source_files_vec.into_iter().collect(), program_name.clone());
+        
         let files_vec: Vec<SourceFile> = source_files.into_iter().collect();
         let syscalls_vec: Vec<String> = syscalls.into_iter().collect();
-        
-        let program_name = if !files_vec.is_empty() {
-            let mut project_counts = std::collections::HashMap::new();
-            for file in &files_vec {
-                *project_counts.entry(file.project.clone()).or_insert(0) += 1;
-            }
-            
-            // Find the project with the highest count
-            project_counts.into_iter()
-                .max_by_key(|(_, count)| *count)
-                .map(|(project, _)| project)
-        } else {
-            None
-        };
         
         let stats = ExtractStats {
             start_offset: offset,
@@ -280,15 +413,12 @@ impl BpfParser {
         Ok(result)
     }
 
-    /// Extracts instructions from the text
     fn extract_instructions(&self, text: &str) -> (HashSet<String>, HashSet<String>, String) {
-        // Try each parser in order
         for parser in &self.parsers {
             if parser.can_handle(text) {
                 let instructions = parser.parse_instructions(text);
                 let protected_instructions = parser.get_protected_instructions(&instructions);
                 
-                // Filter out protected instructions from the main set
                 let filtered_instructions: HashSet<String> = instructions
                     .difference(&protected_instructions)
                     .cloned()
@@ -298,29 +428,30 @@ impl BpfParser {
             }
         }
         
-        // Default to empty sets and "unknown" type if no parser can handle the text
         (HashSet::new(), HashSet::new(), "unknown".to_string())
     }
 
-    /// Extracts source files from the text
     fn extract_source_files(&self, text: &str) -> HashSet<SourceFile> {
         let mut source_files = HashSet::new();
-        
-        // First pass: standard regex patterns for well-formed paths
-        self.extract_standard_paths(text, &mut source_files);
+
+        for parser in &self.parsers {
+            if parser.can_handle(text) {
+                let paths = parser.extract_source_files(text);
+                
+                source_files.extend(paths);
+
+                return source_files;
+            }
+        }
+    
         
         source_files
     }
     
-    /// Extract standard well-formed paths
     fn extract_standard_paths(&self, text: &str, source_files: &mut HashSet<SourceFile>) {
-        // Enhanced regex patterns to better capture file paths
-        // This pattern looks for any occurrence of programs/*/src/*.rs with optional text before/after
-        // programs/([^/]+)/
         let file_re = Regex::new(r"programs/[^.]+\.rs").unwrap();
         let project_re = Regex::new(r"programs/([^/]+)/").unwrap();
         
-        // Find all file paths in the text
         let mut process_matches = |regex: &Regex| {
             for cap in regex.captures_iter(text) {
                 if let Some(path_match) = cap.get(0) {
@@ -331,6 +462,8 @@ impl BpfParser {
                         if let Some(rs_pos) = relative_path.find(".rs") {
                             relative_path = relative_path[0..rs_pos+3].to_string();
                         }
+                    
+                        relative_path = crate::utils::normalize_source_path(&relative_path);
                         
                         let path = format!("programs/{}/src/{}", project, relative_path);
                     
@@ -347,7 +480,6 @@ impl BpfParser {
         process_matches(&file_re);
     }
 
-    /// Extracts syscalls from the program
     fn extract_syscalls(&self, program: &Program) -> HashSet<String> {
         let mut syscalls = HashSet::new();
         

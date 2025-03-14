@@ -2,6 +2,26 @@
 pub const SIGHASH_GLOBAL_NAMESPACE: &str = "global";
 pub const HASH_BYTES: usize = 32;
 
+pub const STD_LIB_NAMES: &[&str] = &[
+    "core",
+    "alloc",
+    "std",
+    "compiler_builtins",
+    "rustc_std_workspace_core",
+    "rustc_std_workspace_alloc",
+    "solana_program",
+    "anchor_lang",
+    "anchor_spl",
+    "spl_token",
+    "spl_associated_token_account",
+    "spl_memo",
+    "bytemuck",
+    "borsh",
+    "num_derive",
+    "num_traits",
+    "thiserror"
+];
+
 pub const NATIVE_INSTRUCTIONS: &[&str] = &[
   "SystemInstruction",
   "LoaderInstruction",

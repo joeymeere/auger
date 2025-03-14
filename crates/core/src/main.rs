@@ -3,7 +3,7 @@ use std::time::Instant;
 use colored::Colorize;
 
 use clap::Parser;
-use auger::{extract_from_file, write_results, dump_elf_meta, ExtractConfig};
+use auger::{dump_elf_meta, extract_from_file_with_parsers, write_results, AnchorProgramParser, ExtractConfig, NativeProgramParser};
 
 /// A tool for extracting information from sBPF binaries
 #[derive(Parser, Debug)]
@@ -75,7 +75,7 @@ fn main() {
     }
     
     // extract text and instruction names
-    match extract_from_file(&args.file, Some(config)) {
+    match extract_from_file_with_parsers(&args.file, Some(config), vec![Box::new(AnchorProgramParser::new()), Box::new(NativeProgramParser::new())]) {
         Ok(result) => {
             println!("{}", "================================================".bright_black().bold());
             println!("{} {}", "Starting extraction from offset:".bright_black().bold(), result.stats.start_offset);

@@ -1,23 +1,23 @@
-# ezbpf-extract
+# Zenith
 
-A tool for extracting text and instructions from BPF/ELF binaries.
+A tool for extracting text and instructions from sBPF binaries.
 
 ## Overview
 
-`ezbpf-extract` is a specialized tool for analyzing BPF/ELF binaries, particularly Solana programs. It extracts embedded text and identifies instruction names, providing insights into the program's structure and functionality.
+Zenith is a specialized tool for analyzing Solana program binaries. It extracts embedded data to identify specific information like the program's name, instruction names, accounts, file paths, and more.
 
 ## Features
 
-- Extract text from BPF/ELF binaries
-- Identify instruction names using regex pattern matching
-- Generate statistics about the extraction process
-- Output results in both text and JSON formats
-- Configurable extraction parameters
+- Extract text from sBPF binaries
+- Identify a program's name
+- Decode and extract program instruction names
+- List file paths referenced in the program
+- Dump results in both text and JSON formats
 
 ## Installation
 
 ```bash
-cargo install --path crates/ezbpf-extract
+cargo install zenith
 ```
 
 ## Usage
@@ -64,15 +64,14 @@ fn main() {
 }
 ```
 
-## Output Files
+## Roadmap
 
-The tool generates the following output files:
-
-- `extracted_text.txt`: The raw extracted text
-- `instructions.txt`: List of unique instruction names (one per line)
-- `instructions.json`: JSON array of instruction names
-- `extract_result.json`: Complete JSON output including text, instructions, and statistics
-
-## License
-
-This project is licensed under the same terms as the parent ezbpf project.
+- [ ] Infer instruction discriminators from extracted names
+- [ ] Find relevant data structures
+  - [ ] Associate field names and types
+- [ ] Extract account names associated with instructions
+  - [ ] Associate data structures with those account names (default to AccountInfo)
+    - [ ] Generate discriminators for each account
+- [ ] Handle custom linkers (MEV fuckers)
+  - [ ] Search for `.comment` section in the ELF
+- [ ] Construct a program IDL from the extracted information
