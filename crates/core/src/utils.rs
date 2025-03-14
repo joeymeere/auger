@@ -107,4 +107,15 @@ pub fn normalize_source_path(path: &str) -> String {
     normalized
 }
 
+pub fn should_use_custom_parser(linker_info: Option<&str>) -> bool {
+    if let Some(linker) = linker_info {
+        // TODO: understand linker patterns better
+        if linker.contains("LLD") || linker.contains("LLVM") {
+            return true;
+        }
+    }
+    
+    false
+}
+
 

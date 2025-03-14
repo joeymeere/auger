@@ -3,7 +3,15 @@ use std::time::Instant;
 use colored::Colorize;
 
 use clap::Parser;
-use auger::{dump_elf_meta, extract_from_file_with_parsers, write_results, AnchorProgramParser, ExtractConfig, NativeProgramParser};
+use auger::{
+    dump_elf_meta, 
+    extract_from_file_with_parsers, 
+    write_results, 
+    utils::should_use_custom_parser,
+    AnchorProgramParser, 
+    ExtractConfig, 
+    NativeProgramParser
+};
 
 /// A tool for extracting information from sBPF binaries
 #[derive(Parser, Debug)]
@@ -33,17 +41,17 @@ fn main() {
     let start_time = Instant::now();
 
     println!();
-    println!("{}", "===============================".bright_red());
-    println!("{}", "  ___                        ".bright_red());
-    println!("{}", " / _ \\                        ".bright_red());
-    println!("{}", "/ /_\\ \\_   _  __ _  ___ _ __ ".bright_red());
-    println!("{}", "|  _  | | | |/ _` |/ _ \\ '__|".bright_red());
-    println!("{}", "| | | | |_| | (_| |  __/ |   ".bright_red());
-    println!("{}", "\\_| |_/\\__,_|\\__, |\\___|_|   ".bright_red());
-    println!("{}", "              __/ |          ".bright_red());
-    println!("{}", "             |___/           ".bright_red());
-    println!();
-    println!("{}", "===============================".bright_red());
+    println!("{}", "=============================".bright_red().bold());
+    println!("{}", "  ___                        ".bright_white().on_bright_red().bold());
+    println!("{}", " / _ \\                       ".bright_white().on_bright_red().bold());
+    println!("{}", "/ /_\\ \\_   _  __ _  ___ _ __ ".bright_white().on_bright_red().bold());
+    println!("{}", "|  _  | | | |/ _` |/ _ \\ '__|".bright_white().on_bright_red().bold());
+    println!("{}", "| | | | |_| | (_| |  __/ |   ".bright_white().on_bright_red().bold());
+    println!("{}", "\\_| |_/\\__,_|\\__, |\\___|_|   ".bright_white().on_bright_red().bold());
+    println!("{}", "              __/ |          ".bright_white().on_bright_red().bold());
+    println!("{}", "             |___/           ".bright_white().on_bright_red().bold());
+    println!("{}", "                             ".on_bright_red().bold());
+    println!("{}", "=============================".bright_red().bold());
     println!();
 
     let args = Args::parse();
@@ -77,17 +85,25 @@ fn main() {
     // extract text and instruction names
     match extract_from_file_with_parsers(&args.file, Some(config), vec![Box::new(AnchorProgramParser::new()), Box::new(NativeProgramParser::new())]) {
         Ok(result) => {
-            println!("{}", "================================================".bright_black().bold());
+            println!("{}", format!("\n==================== {} ====================", " STATS ".bright_white().on_bright_black().italic()).bright_black().bold());
             println!("{} {}", "Starting extraction from offset:".bright_black().bold(), result.stats.start_offset);
             println!("{} {}", "Extraction ended at position:".bright_black().bold(), result.stats.end_position);
             println!("{} {}", "Total bytes processed:".bright_black().bold(), result.stats.bytes_processed);
-            println!("{}", "================================================".bright_black().bold());
+            println!("{}", "=================================================".bright_black().bold());
             
+            println!("{}", format!("\n=================== {} ===================", " PROGRAM ".bright_white().on_bright_blue().italic()).bright_blue().bold());
             if let Some(program_name) = &result.program_name {
-                println!("\n{} {}", "Detected program name:".bright_blue().bold(), program_name);
+                println!("{} {}", "Detected program name:".bright_blue().bold(), program_name);
             }
-            
-            println!("\n{} {}", "Program type:".bright_blue().bold(), result.program_type);
+            println!("{} {}", "Program type:".bright_blue().bold(), result.program_type);
+            if let Some(linker) = &result.custom_linker {
+                println!("{} {}", "Linker:".bright_blue().bold(), linker);
+                
+                if should_use_custom_parser(result.custom_linker.as_deref()) {
+                    println!("{}", "  (You may neeed to use a custom parser)".bright_yellow().italic());
+                }
+            }
+            println!("{}", "=================================================".bright_blue().bold());
             
             println!("\n{} {}", format!("Found {} unique instructions:", result.instructions.len()).bright_green().bold(), "");
             for instruction in &result.instructions {

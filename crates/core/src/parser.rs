@@ -374,6 +374,8 @@ impl BpfParser {
         let mut source_files = self.extract_source_files(&extracted_text);
         let syscalls = self.extract_syscalls(&program);
         
+        let custom_linker = self.extract_custom_linker(&program);
+        
         let instructions_vec: Vec<String> = instructions
             .into_iter()
             .filter(|s| s.len() > 1 && s.len() <= 50)
@@ -408,6 +410,7 @@ impl BpfParser {
             program_name,
             program_type,
             syscalls: syscalls_vec,
+            custom_linker,
         };
         
         Ok(result)
@@ -496,6 +499,25 @@ impl BpfParser {
         }
         
         syscalls
+    }
+
+    /// reverse searches for the ".comment" section in the ELF file's string tables
+    /// informs a further search for a custom linker name
+    fn extract_custom_linker(&self, program: &Program) -> Option<String> {
+        for section in program.section_header_entries.iter().rev() {
+            if section.label.contains(".comment") || section.label.contains(".strtab") {
+                if let Some(linker_pos) = section.utf8.rfind("Linker: ") {
+                    let linker_info = &section.utf8[linker_pos + "Linker: ".len()..];
+                    let end_pos = linker_info.find('\0').unwrap_or(linker_info.len());
+                    let linker = linker_info[..end_pos].trim().to_string();
+                    if !linker.is_empty() {
+                        return Some(linker);
+                    }
+                }
+            }
+        }
+        
+        None
     }
 }
 

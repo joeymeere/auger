@@ -60,6 +60,8 @@ pub struct ExtractResult {
     pub program_type: String,
     /// List of syscalls found in .dynstr section
     pub syscalls: Vec<String>,
+    /// Custom linker information if found in .comment section
+    pub custom_linker: Option<String>,
 }
 
 /// Statistics about the extraction process

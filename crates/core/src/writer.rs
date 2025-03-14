@@ -15,6 +15,7 @@ pub struct Manifest {
     pub protected_instructions: Vec<String>,
     pub syscalls: Vec<String>,
     pub source_files: Vec<String>,
+    pub custom_linker: Option<String>,
 }
 
 pub struct FileWriter;
@@ -73,6 +74,7 @@ impl FileWriter {
             protected_instructions: result.protected_instructions.clone(),
             syscalls: result.syscalls.clone(),
             source_files: result.files.iter().map(|f| f.path.clone()).collect(),
+            custom_linker: result.custom_linker.clone(),
         };
 
         let manifest_json = serde_json::to_string_pretty(&manifest)?;
