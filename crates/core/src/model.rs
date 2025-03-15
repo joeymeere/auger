@@ -50,6 +50,8 @@ pub struct ExtractResult {
     pub instructions: Vec<String>,
     /// List of protected instructions found (e.g., Idl* instructions)
     pub protected_instructions: Vec<String>,
+    /// List of functions, structs, enums, and traits found
+    pub definitions: Vec<Definition>,
     /// List of source file references found
     pub files: Vec<SourceFile>,
     /// Statistics about the extraction
@@ -77,4 +79,23 @@ pub struct ExtractStats {
     pub instruction_count: usize,
     /// Number of unique source files found
     pub file_count: usize,
+}
+
+/// Represents a definition found in the binary (function, struct, enum, trait)
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct Definition {
+    /// Full identifier path (e.g., "arigato::dex::phoenix::swap")
+    pub ident: String,
+    /// Type of definition (fn, struct, enum, trait)
+    pub kind: String,
+    /// Hash value from the mangled name
+    pub hash: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum DefinitionKind {
+    Function,
+    Struct,
+    Enum,
+    Trait,
 }

@@ -16,8 +16,15 @@ tokio = { version = "1.36.0", features = ["full"] }
 tower = "0.4.13"
 tower-http = { version = "0.5.1", features = ["cors", "trace"] }
 tracing = "0.1.40"
-tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.18", features = ["env-filter", "time"] }
 chrono = { version = "0.4.34", features = ["serde"] }
 solana-sdk = "1.18.8"
 solana-client = "1.18.8"
 solana-program = "1.18.8"
+futures = "0.3.30"
+pin-project = "1.1.5"
+hyper = { version = "1.1.0", features = ["full"] }
+uuid = { version = "1.7.0", features = ["v4"] }
+reqwest = { version = "0.11", features = ["json", "multipart"] }
+hex = "0.4.3"
+base64 = "0.21.7"

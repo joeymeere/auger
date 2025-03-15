@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use auger::{
     dump_elf_meta, extract_from_file_with_parsers, utils::should_use_custom_parser, write_results,
-    AnchorProgramParser, ExtractConfig, NativeProgramParser,
+    AnchorProgramParser, ExtractConfig, NativeProgramParser, LLDProgramParser,
 };
 use clap::Parser;
 
@@ -131,8 +131,9 @@ fn main() {
         &args.file,
         Some(config),
         vec![
-            Box::new(AnchorProgramParser::new()),
+            Box::new(LLDProgramParser::new(None)),
             Box::new(NativeProgramParser::new()),
+            Box::new(AnchorProgramParser::new()),
         ],
     ) {
         Ok(result) => {
@@ -230,6 +231,36 @@ fn main() {
             );
             for instruction in &result.protected_instructions {
                 println!("- {}", instruction);
+            }
+
+            println!(
+                "\n{} {}",
+                format!(
+                    "Found {} definitions:",
+                    result.definitions.len()
+                )
+                .bright_green()
+                .bold(),
+                ""
+            );
+
+            for definition in &result.definitions {
+                let kind_printer = match definition.kind.as_str() {
+                    "Function" => format!("[{}]", definition.kind.on_bright_cyan().bold()),
+                    "Method" => format!("[{}]", definition.kind.on_bright_yellow().bold()),
+                    "StaticMethod" => format!("[{}]", definition.kind.on_bright_blue().bold()),
+                    "TraitImpl" => format!("[{}]", definition.kind.on_bright_magenta().bold()),
+                    "GenericHelper" => format!("[{}]", definition.kind.on_bright_yellow().bold()),
+                    "Operator" => format!("[{}]", definition.kind.on_bright_red().bold()),
+                    "Accessor" => format!("[{}]", definition.kind.on_bright_purple().bold()),
+                    "TypeDef" => format!("[{}]", definition.kind.on_bright_white().bold()),
+                    _ => format!("{}", definition.kind.bold()),
+                };
+                if let Some(hash) = &definition.hash {
+                    println!("- {}: {} {}", kind_printer, definition.ident, format!("({})", hash).bright_black().italic());
+                } else {
+                    println!("- {}: {}", kind_printer, definition.ident);
+                }
             }
 
             println!(

@@ -4,6 +4,7 @@ use anyhow::Result;
 use thiserror::Error;
 
 pub mod consts;
+pub mod demangler;
 pub mod hash;
 pub mod model;
 pub mod parser;
@@ -11,7 +12,7 @@ pub mod utils;
 pub mod writer;
 
 pub use model::{ExtractConfig, ExtractResult, ExtractStats, Instruction, SourceFile};
-pub use parser::{AnchorProgramParser, BpfParser, NativeProgramParser, ProgramParser, ProgramType};
+pub use parser::{AnchorProgramParser, BpfParser, LLDProgramParser, NativeProgramParser, ProgramParser, ProgramType};
 pub use writer::FileWriter;
 
 #[derive(Error, Debug)]

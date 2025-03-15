@@ -16,6 +16,7 @@ clap = { version = "4.5.3", features = ["derive"] }
 colored = "3.0.0"
 sha2 = "0.10.8"
 bs58 = "0.5.1"
+log = "0.4.20"
 
 [dev-dependencies]
 hex-literal = "0.4.1" 

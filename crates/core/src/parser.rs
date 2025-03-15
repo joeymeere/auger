@@ -4,7 +4,7 @@ use ezbpf_core::program::Program;
 use regex::Regex;
 
 use crate::consts::*;
-use crate::model::{ExtractConfig, ExtractResult, ExtractStats, SourceFile};
+use crate::model::{Definition, ExtractConfig, ExtractResult, ExtractStats, SourceFile};
 use crate::ExtractError;
 
 pub enum ProgramType {
@@ -20,6 +20,7 @@ pub trait ProgramParser {
     fn get_protected_instructions(&self, instructions: &HashSet<String>) -> HashSet<String>;
     fn extract_source_files(&self, text: &str) -> HashSet<SourceFile>;
     fn extract_standard_paths(&self, text: &str, source_files: &mut HashSet<SourceFile>);
+    fn extract_definitions(&self, text: &str) -> HashSet<Definition>;
 }
 
 pub struct AnchorProgramParser;
@@ -146,6 +147,11 @@ impl ProgramParser for AnchorProgramParser {
 
         process_matches(&file_re);
     }
+
+    fn extract_definitions(&self, _text: &str) -> HashSet<Definition> {
+        // AnchorProgramParser doesn't extract definitions
+        HashSet::new()
+    }
 }
 
 pub struct NativeProgramParser;
@@ -205,7 +211,12 @@ impl ProgramParser for NativeProgramParser {
 
             let parts: Vec<&str> = path.split("/src/").collect();
             if parts.len() >= 2 {
+                if STD_LIB_NAMES.contains(&parts[0]) {
+                    continue;
+                }
+
                 let project = parts[0].to_string();
+                
                 let mut relative_path = format!("src/{}", parts[1]);
 
                 relative_path = crate::utils::normalize_source_path(&relative_path);
@@ -226,7 +237,197 @@ impl ProgramParser for NativeProgramParser {
         // native programs don't have idls, therefore no protected instructions
         HashSet::new()
     }
+
+    fn extract_definitions(&self, _text: &str) -> HashSet<Definition> {
+        // NativeProgramParser doesn't extract definitions
+        HashSet::new()
+    }
 }
+
+/// Parse binaries that use the LLVM linker, [LLD](https://lld.llvm.org/)
+/// 
+/// • Anchor, and some native programs use [`cargo build-bpf`](https://github.com/anza-xyz/agave/blob/6c86238f6486c7d95b0a3406dce1a09e620205ac/CHANGELOG.md?plain=1#L77), which leverages system linkers 
+/// 
+/// • Newer programs (using things like Pinnochio) use [`cargo build-sbf`](https://github.com/anza-xyz/agave/blob/a7092a20bb2f5d16375bdc531b71d2a164b43b93/platform-tools-sdk/sbf/c/sbf.mk#L37), which uses LLD by default.
+/// 
+/// • Even newer versions of Anchor [still seem to use `cargo build-bpf`](https://github.com/coral-xyz/anchor/blob/c509618412e004415c7b090e469a9e4d5177f642/cli/src/config.rs#L475), so this should not be needed in those cases. (?)
+/// 
+/// • `cargo build-bpf` has been considered *deprecated* since [July 11th 2024](https://github.com/anza-xyz/agave/commits/6c86238f6486c7d95b0a3406dce1a09e620205ac/CHANGELOG.md?after=6c86238f6486c7d95b0a3406dce1a09e620205ac+34).
+/// 
+/// These binaries will include a `.<program_name>` section in the ELF, after the (normally) last string table. 
+/// This extra section includes another UTF-8 blob (not present in older binaries) containing imports, compliant with the [Itanium C++ ABI](https://itanium-cxx-abi.github.io/cxx-abi/abi.html).
+/// 
+/// ### Example:
+/// 
+/// `_ZN7program6module6module4file13DataStructure6method17h13871ae2612c8829E`
+/// 
+/// ### Structure:
+/// 
+/// - `_ZN` (mangling prefix)
+/// - `<length_of_next_component>` (length of the program namespace)
+/// - `<program_namespace>` (or program name, in our case)
+/// - `<length_of_next_component>` (length of the module namespace)
+/// - `<module_namespace>`
+/// - `<length_of_next_component>` (length of the file name)
+/// - `<file_name>`
+/// - `<length_of_next_component>` (length of the data structure name)
+/// - `<data_struct_name>` (camel cased for structs, otherwise snake_case)
+/// - `<length_of_next_component>` (length of the method name)
+/// - *`<method_name>`* (in the case that the previous component was a struct)
+/// - `17h<hash>` (17 char hexadecimal hash from a Rust ext. of the ABI. Present for versioning and to prevent collisions.)
+/// - `E` (denoting end)
+/// - `<null_byte>` (null terminator)
+/// 
+/// ### Representation:
+/// 
+/// `<program>::<module>::<module?>::<file>::<DataStructure>::<method?>`
+
+pub struct LLDProgramParser {
+    program_name: Option<String>,
+}
+
+impl LLDProgramParser {
+    pub fn new(program_name: Option<String>) -> Self {
+        Self { program_name }
+    }
+    
+    fn extract_demangled_symbols(&self, text: &str) -> Vec<crate::demangler::DemangledSymbol> {
+        let mangled_names = crate::demangler::extract_mangled_names(text);
+        
+        mangled_names
+            .iter()
+            .filter_map(|name| {
+                match crate::demangler::demangle(name) {
+                    Ok(symbol) => Some(symbol),
+                    Err(_) => None,
+                }
+            })
+            .collect()
+    }
+    
+    #[allow(dead_code)]
+    fn extract_source_files_from_symbols(
+        &self, 
+        symbols: &[crate::demangler::DemangledSymbol]
+    ) -> HashSet<SourceFile> {
+        let mut source_files = HashSet::new();
+        
+        for symbol in symbols {
+            if symbol.path.is_empty() {
+                continue;
+            }
+            
+            let project = symbol.path[0].clone();
+            
+            if let Some(ref expected_program) = self.program_name {
+                if project != *expected_program {
+                    continue;
+                }
+            }
+            
+            if symbol.path.len() > 1 {
+                if STD_LIB_NAMES.contains(&project.as_str()) {
+                    continue;
+                }
+                
+                let path_str = symbol.path.join("::");
+                if path_str.contains("core::") || path_str.contains("std::") {
+                    continue;
+                }
+
+                let module_path = symbol.path[1..].join("::");
+                let relative_path = format!("src/{}.rs", module_path.replace("::", "/"));
+                
+                let normalized_path = crate::utils::normalize_source_path(&relative_path);
+                
+                source_files.insert(SourceFile {
+                    path: format!("{}/{}", project, normalized_path),
+                    project,
+                    relative_path: normalized_path,
+                });
+            }
+        }
+        
+        source_files
+    }
+}
+
+impl ProgramParser for LLDProgramParser {
+    fn parse_instructions(&self, _text: &str) -> HashSet<String> {
+        HashSet::<String>::new()
+    }
+
+    fn program_type(&self) -> &str {
+        "sbf"
+    }
+
+    fn can_handle(&self, _text: &str) -> bool {
+        true
+    }
+
+    fn extract_source_files(&self, _text: &str) -> HashSet<SourceFile> {
+        HashSet::<SourceFile>::new()
+    }
+
+    fn extract_standard_paths(&self, _text: &str, _source_files: &mut HashSet<SourceFile>) {}
+
+    fn get_protected_instructions(&self, _instructions: &HashSet<String>) -> HashSet<String> {
+        HashSet::new()
+    }
+
+    fn extract_definitions(&self, text: &str) -> HashSet<Definition> {
+        let mut definitions = HashSet::new();
+        
+        let mut extra_libs = vec![];
+        let symbols = self.extract_demangled_symbols(text);
+        
+        for symbol in symbols {
+            if symbol.path.is_empty() {
+                continue;
+            }
+
+            // skip if it's an external lib
+            if STD_LIB_NAMES.iter().any(|lib| symbol.path[0].starts_with(lib)) || ANCILLARY_LIB_NAMES.iter().any(|lib| symbol.path[0].starts_with(lib)) {
+                extra_libs.push(symbol.path);
+                continue;
+            }
+            
+            let project = symbol.path[0].clone();
+            
+            if let Some(ref expected_program) = self.program_name {
+                if project != *expected_program {
+                    continue;
+                }
+            }
+            
+            let ident = if symbol.path.len() > 1 {
+                let path_str = symbol.path.join("::");
+                if !symbol.name.is_empty() {
+                    format!("{}", path_str)
+                } else {
+                    path_str
+                }
+            } else if !symbol.name.is_empty() {
+                project.clone()
+            } else {
+                project.clone()
+            };
+            
+            let kind = symbol.symbol_type;
+            
+            let definition = Definition {
+                ident,
+                kind: kind.to_string(),
+                hash: Some(symbol.name.clone()),
+            };
+            
+            definitions.insert(definition);
+        }
+        
+        definitions
+    }
+}
+
 pub struct BpfParser {
     parsers: Vec<Box<dyn ProgramParser>>,
 }
@@ -240,6 +441,7 @@ impl Default for BpfParser {
 impl BpfParser {
     pub fn new() -> Self {
         let parsers: Vec<Box<dyn ProgramParser>> = vec![
+            Box::new(LLDProgramParser::new(None)),
             Box::new(AnchorProgramParser::new()),
             Box::new(NativeProgramParser::new()),
         ];
@@ -260,83 +462,28 @@ impl BpfParser {
         source_files: HashSet<SourceFile>,
         program_name: Option<String>,
     ) -> HashSet<SourceFile> {
-        use std::collections::HashMap;
+        let mut normalized = HashSet::new();
 
-        if source_files.is_empty() {
-            return source_files;
-        }
+        for file in source_files {
+            let mut normalized_file = file.clone();
 
-        let filtered_files: HashSet<SourceFile> = source_files
-            .into_iter()
-            .filter(|file| !crate::consts::STD_LIB_NAMES.contains(&file.project.as_str()))
-            .collect();
-
-        if filtered_files.is_empty() {
-            return filtered_files;
-        }
-
-        let files_vec: Vec<SourceFile> = filtered_files.into_iter().collect();
-        let main_project = match program_name {
-            Some(name) => name,
-            None => crate::utils::find_main_project(&files_vec, |f| &f.project).unwrap_or_default(),
-        };
-
-        let mut normalized_files = HashSet::new();
-        let mut path_map: HashMap<String, Vec<SourceFile>> = HashMap::new();
-
-        for file in files_vec {
-            let normalized_project =
-                crate::utils::normalize_project_name(&file.project, &main_project);
-            let normalized_rel_path = crate::utils::normalize_source_path(&file.relative_path);
-
-            let normalized_file = SourceFile {
-                path: if normalized_project != file.project {
-                    format!("{}/{}", normalized_project, normalized_rel_path)
-                } else if normalized_rel_path != file.relative_path {
-                    format!("{}/{}", normalized_project, normalized_rel_path)
-                } else {
-                    file.path
-                },
-                project: normalized_project,
-                relative_path: normalized_rel_path,
-            };
-
-            path_map
-                .entry(normalized_file.relative_path.clone())
-                .or_insert_with(Vec::new)
-                .push(normalized_file);
-        }
-
-        for (_, mut files) in path_map {
-            if files.len() == 1 {
-                normalized_files.insert(files.pop().unwrap());
-            } else {
-                let main_project_idx = files.iter().position(|f| f.project == main_project);
-                if let Some(idx) = main_project_idx {
-                    normalized_files.insert(files.remove(idx));
-                } else {
-                    let shortest_project_idx = files
-                        .iter()
-                        .enumerate()
-                        .min_by_key(|(_, f)| f.project.len())
-                        .map(|(idx, _)| idx);
-
-                    if let Some(idx) = shortest_project_idx {
-                        normalized_files.insert(files.remove(idx));
-                    } else {
-                        normalized_files.insert(files.pop().unwrap());
-                    }
+            if let Some(ref program) = program_name {
+                if file.project != *program {
+                    normalized_file.project = program.clone();
+                    normalized_file.path = format!("{}/{}", program, file.relative_path);
                 }
             }
+
+            normalized.insert(normalized_file);
         }
 
-        normalized_files
+        normalized
     }
 
     pub fn extract_from_bytes(
         &self,
         bytes: &[u8],
-        config: ExtractConfig,
+        config: &ExtractConfig,
     ) -> Result<ExtractResult, ExtractError> {
         let program = Program::from_bytes(bytes)
             .map_err(|e| ExtractError::ProgramParseError(format!("{:?}", e)))?;
@@ -395,8 +542,14 @@ impl BpfParser {
             self.extract_instructions(&extracted_text);
         let mut source_files = self.extract_source_files(&extracted_text);
         let syscalls = self.extract_syscalls(&program);
-
         let custom_linker = self.extract_custom_linker(&program);
+        let mut definitions = HashSet::new();
+        for parser in &self.parsers {
+            if parser.can_handle(&extracted_text) {
+                let parser_definitions = parser.extract_definitions(&extracted_text);
+                definitions.extend(parser_definitions);
+            }
+        }
 
         let instructions_vec: Vec<String> = instructions
             .into_iter()
@@ -405,9 +558,8 @@ impl BpfParser {
             .collect();
 
         let protected_instructions_vec: Vec<String> = protected_instructions.into_iter().collect();
-
+        let definitions_vec: Vec<Definition> = definitions.into_iter().collect();
         let source_files_vec: Vec<SourceFile> = source_files.into_iter().collect();
-
         let program_name = crate::utils::find_main_project(&source_files_vec, |f| &f.project);
 
         source_files = self
@@ -428,6 +580,7 @@ impl BpfParser {
             text: extracted_text,
             instructions: instructions_vec,
             protected_instructions: protected_instructions_vec,
+            definitions: definitions_vec,
             files: files_vec,
             stats,
             program_name,
@@ -440,79 +593,57 @@ impl BpfParser {
     }
 
     fn extract_instructions(&self, text: &str) -> (HashSet<String>, HashSet<String>, String) {
+        let mut all_instructions = HashSet::new();
+        let mut all_protected_instructions = HashSet::new();
+        let mut program_type = "unknown".to_string();
+        let mut found_parser = false;
+        
         for parser in &self.parsers {
             if parser.can_handle(text) {
                 let instructions = parser.parse_instructions(text);
                 let protected_instructions = parser.get_protected_instructions(&instructions);
-
-                let filtered_instructions: HashSet<String> = instructions
-                    .difference(&protected_instructions)
-                    .cloned()
-                    .collect();
-
-                return (
-                    filtered_instructions,
-                    protected_instructions,
-                    parser.program_type().to_string(),
-                );
+                
+                if !found_parser {
+                    program_type = parser.program_type().to_string();
+                    found_parser = true;
+                }
+                
+                all_instructions.extend(instructions);
+                all_protected_instructions.extend(protected_instructions);
             }
         }
-
-        (HashSet::new(), HashSet::new(), "unknown".to_string())
+        
+        if !found_parser {
+            println!("BpfParser: No parser could handle the text, using unknown type");
+        }
+        
+        let filtered_instructions: HashSet<String> = all_instructions
+            .difference(&all_protected_instructions)
+            .cloned()
+            .collect();
+        
+        (filtered_instructions, all_protected_instructions, program_type)
     }
 
     fn extract_source_files(&self, text: &str) -> HashSet<SourceFile> {
-        let mut source_files = HashSet::new();
-
+        let mut all_source_files = HashSet::new();
+        let mut found_parser = false;
+        
         for parser in &self.parsers {
             if parser.can_handle(text) {
                 let paths = parser.extract_source_files(text);
-
-                source_files.extend(paths);
-
-                return source_files;
+                
+                all_source_files.extend(paths);
+                found_parser = true;
             }
         }
-
-        source_files
+        
+        if !found_parser {
+            println!("BpfParser: No parser could handle the text for source files");
+        }
+        
+        all_source_files
     }
-
-    /*
-    fn extract_standard_paths(&self, text: &str, source_files: &mut HashSet<SourceFile>) {
-        let file_re = Regex::new(r"programs/[^.]+\.rs").unwrap();
-        let project_re = Regex::new(r"programs/([^/]+)/").unwrap();
-
-        let mut process_matches = |regex: &Regex| {
-            for cap in regex.captures_iter(text) {
-                if let Some(path_match) = cap.get(0) {
-                    if let Some(project_match) = project_re.captures(path_match.as_str()) {
-                        let project = project_match
-                            .get(1)
-                            .map(|m| m.as_str().to_string())
-                            .unwrap_or_default();
-                        let mut relative_path = path_match.as_str().to_string();
-
-                        if let Some(rs_pos) = relative_path.find(".rs") {
-                            relative_path = relative_path[0..rs_pos + 3].to_string();
-                        }
-
-                        relative_path = crate::utils::normalize_source_path(&relative_path);
-
-                        let path = format!("programs/{}/src/{}", project, relative_path);
-
-                        source_files.insert(SourceFile {
-                            path,
-                            project: project.clone(),
-                            relative_path,
-                        });
-                    }
-                }
-            }
-        };
-
-        process_matches(&file_re);
-    }
-    */
 
     fn extract_syscalls(&self, program: &Program) -> HashSet<String> {
         let mut syscalls = HashSet::new();
@@ -532,8 +663,6 @@ impl BpfParser {
         syscalls
     }
 
-    /// reverse searches for the ".comment" section in the ELF file's string tables
-    /// informs a further search for a custom linker name
     fn extract_custom_linker(&self, program: &Program) -> Option<String> {
         for section in program.section_header_entries.iter().rev() {
             if section.label.contains(".comment") || section.label.contains(".strtab") {
@@ -557,7 +686,7 @@ pub fn extract_from_bytes(
     config: ExtractConfig,
 ) -> Result<ExtractResult, ExtractError> {
     let parser = BpfParser::new();
-    parser.extract_from_bytes(bytes, config)
+    parser.extract_from_bytes(bytes, &config)
 }
 
 pub fn extract_from_bytes_with_parsers(
@@ -566,5 +695,5 @@ pub fn extract_from_bytes_with_parsers(
     parsers: Vec<Box<dyn ProgramParser>>,
 ) -> Result<ExtractResult, ExtractError> {
     let parser = BpfParser::with_parsers(parsers);
-    parser.extract_from_bytes(bytes, config)
+    parser.extract_from_bytes(bytes, &config)
 }
