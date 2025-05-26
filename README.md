@@ -1,6 +1,6 @@
 # Auger
 
-An SRE toolkit for sBPF binaries.
+An SRE toolkit for sBPF binaries. *This project is currently archived, and is both unfinished and infrequently worked on*
 
 ## Overview
 
