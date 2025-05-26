@@ -1,0 +1,92 @@
+{
+  "version": "{{ version }}",
+  "name": "{{ name }}",
+  "instructions": [
+    {% for instruction in instructions %}
+    {
+      "name": "{{ instruction.name }}",
+      "accounts": [
+        {% for account in instruction.accounts %}
+        {
+          "name": "{{ account.name }}",
+          "isMut": {{ account.isMut | lower }},
+          "isSigner": {{ account.isSigner | lower }}
+          {%- if not loop.last %},{% endif %}
+        }
+        {%- if not loop.last %},{% endif %}
+        {% endfor %}
+      ],
+      "args": [
+        {% for arg in instruction.args %}
+        {
+          "name": "{{ arg.name }}",
+          "type": "{{ arg.type }}"
+          {%- if not loop.last %},{% endif %}
+        }
+        {%- if not loop.last %},{% endif %}
+        {% endfor %}
+      ]
+      {%- if not loop.last %},{% endif %}
+    }
+    {%- if not loop.last %},{% endif %}
+    {% endfor %}
+  ],
+  "accounts": [
+    {% for account in accounts %}
+    {
+      "name": "{{ account.name }}",
+      "type": {
+        "kind": "{{ account.type.kind }}",
+        "fields": [
+          {% for field in account.type.fields %}
+          {
+            "name": "{{ field.name }}",
+            "type": "{{ field.type }}"
+            {%- if not loop.last %},{% endif %}
+          }
+          {%- if not loop.last %},{% endif %}
+          {% endfor %}
+        ]
+      }
+      {%- if not loop.last %},{% endif %}
+    }
+    {%- if not loop.last %},{% endif %}
+    {% endfor %}
+  ],
+  "types": [
+    {% for type in types %}
+    {
+      "name": "{{ type.name }}",
+      "type": {
+        "kind": "{{ type.type.kind }}",
+        "fields": [
+          {% for field in type.type.fields %}
+          {
+            "name": "{{ field.name }}",
+            "type": "{{ field.type }}"
+            {%- if not loop.last %},{% endif %}
+          }
+          {%- if not loop.last %},{% endif %}
+          {% endfor %}
+        ]
+      }
+      {%- if not loop.last %},{% endif %}
+    }
+    {%- if not loop.last %},{% endif %}
+    {% endfor %}
+  ],
+  "errors": [
+    {% for error in errors %}
+    {
+      "code": {{ error.code }},
+      "name": "{{ error.name }}",
+      "msg": "{{ error.msg }}"
+      {%- if not loop.last %},{% endif %}
+    }
+    {%- if not loop.last %},{% endif %}
+    {% endfor %}
+  ],
+  "metadata": {
+    "address": "{{ metadata.address }}"
+  }
+} 

@@ -4,8 +4,8 @@ use std::path::Path;
 use ezbpf_core::program::Program;
 use serde::{Deserialize, Serialize};
 
-use crate::model::ExtractResult;
-use crate::ExtractError;
+use crate::AugerResult;
+use crate::AugerError;
 
 #[derive(Serialize, Deserialize)]
 pub struct Manifest {
@@ -16,6 +16,15 @@ pub struct Manifest {
     pub syscalls: Vec<String>,
     pub source_files: Vec<String>,
     pub custom_linker: Option<String>,
+    pub disassembly: Vec<String>,
+    pub string_references: Vec<StringReference>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct StringReference {
+    pub address: u64,
+    pub content: String,
+    pub referenced_by: Vec<u64>,
 }
 
 pub struct FileWriter;
@@ -31,12 +40,12 @@ impl FileWriter {
         Self
     }
 
-    pub fn dump_elf_meta(&self, file_bytes: &[u8], base_path: &Path) -> Result<(), ExtractError> {
+    pub fn dump_elf_meta(&self, file_bytes: &[u8], base_path: &Path) -> Result<(), AugerError> {
         let program = Program::from_bytes(file_bytes)
-            .map_err(|e| ExtractError::ProgramParseError(format!("{:?}", e)))?;
+            .map_err(|e| AugerError::ProgramParseError(format!("{:?}", e)))?;
 
         let json = serde_json::to_string_pretty(&program)
-            .map_err(|e| ExtractError::ProgramParseError(format!("{:?}", e)))?;
+            .map_err(|e| AugerError::ProgramParseError(format!("{:?}", e)))?;
 
         fs::write(base_path.join("elf-meta.json"), json)?;
 
@@ -45,9 +54,9 @@ impl FileWriter {
 
     pub fn write_results(
         &self,
-        result: &ExtractResult,
+        result: &AugerResult,
         base_path: &Path,
-    ) -> Result<(), ExtractError> {
+    ) -> Result<(), AugerError> {
         fs::create_dir_all(base_path)?;
 
         let prefix = match &result.program_name {
@@ -64,20 +73,36 @@ impl FileWriter {
 
         let full_json = serde_json::to_string_pretty(result)?;
         fs::write(base_path.join(format!("{}result.json", prefix)), full_json)?;
+        
+        // Write type report if available
+        if let Some(type_report) = &result.type_report {
+            fs::write(
+                base_path.join(format!("{}type_report.md", prefix)),
+                type_report,
+            )?;
+        }
 
         Ok(())
     }
 
     fn write_manifest(
         &self,
-        result: &ExtractResult,
+        result: &AugerResult,
         base_path: &Path,
         prefix: &str,
-    ) -> Result<(), ExtractError> {
+    ) -> Result<(), AugerError> {
         let program_name = match &result.program_name {
             Some(name) => name.to_string(),
             None => String::new(),
         };
+
+        let string_references = result.strings.iter().map(|sr| {
+            StringReference {
+                address: sr.address,
+                content: sr.content.clone(),
+                referenced_by: sr.referenced_by.clone(),
+            }
+        }).collect();
 
         let manifest = Manifest {
             program_name,
@@ -87,6 +112,8 @@ impl FileWriter {
             syscalls: result.syscalls.clone(),
             source_files: result.files.iter().map(|f| f.path.clone()).collect(),
             custom_linker: result.custom_linker.clone(),
+            disassembly: result.disassembly.clone(),
+            string_references,
         };
 
         let manifest_json = serde_json::to_string_pretty(&manifest)?;
@@ -98,14 +125,12 @@ impl FileWriter {
     }
 }
 
-/// dumps the ELF metadata to a JSON file
-pub fn dump_elf_meta(file_bytes: &[u8], base_path: &Path) -> Result<(), ExtractError> {
+pub fn dump_elf_meta(file_bytes: &[u8], base_path: &Path) -> Result<(), AugerError> {
     let writer = FileWriter::new();
     writer.dump_elf_meta(file_bytes, base_path)
 }
 
-/// writes extraction results to files
-pub fn write_results(result: &ExtractResult, base_path: &Path) -> Result<(), ExtractError> {
+pub fn write_results(result: &AugerResult, base_path: &Path) -> Result<(), AugerError> {
     let writer = FileWriter::new();
     writer.write_results(result, base_path)
 }

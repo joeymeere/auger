@@ -1,14 +1,21 @@
+use clap::Parser;
 use colored::Colorize;
 use std::path::PathBuf;
 use std::time::Instant;
+use log::LevelFilter;
+use env_logger::Builder;
 
 use auger::{
-    dump_elf_meta, extract_from_file_with_parsers, utils::should_use_custom_parser, write_results,
-    AnchorProgramParser, ExtractConfig, NativeProgramParser, LLDProgramParser,
+    AnchorParser, 
+    NativeParser, 
+    LLDParser,
+    models::AugerConfig,
+    utils::should_use_custom_parser,
+    extract_from_file_with_parsers, 
+    dump_elf_meta, 
+    write_results,
 };
-use clap::Parser;
 
-/// A tool for extracting information from sBPF binaries
 #[derive(Parser, Debug)]
 #[clap(author, version, about)]
 struct Args {
@@ -30,9 +37,30 @@ struct Args {
     /// Dump ELF metadata to JSON file
     #[clap(short = 'e', long)]
     dump_elf: bool,
+    /// Attempt to recover type information from the binary
+    #[clap(short = 't', long)]
+    recover_types: bool,
+    /// Enable verbose logging (use multiple times for more verbosity)
+    #[clap(short = 'v', long, action = clap::ArgAction::Count)]
+    verbose: u8,
 }
 
 fn main() {
+    let args = Args::parse();
+    
+    let mut builder = Builder::new();
+    let log_level = match args.verbose {
+        0 => LevelFilter::Warn,
+        1 => LevelFilter::Info,
+        2 => LevelFilter::Debug,
+        _ => LevelFilter::Trace,
+    };
+    
+    builder
+        .filter_level(log_level)
+        .format_timestamp(None)
+        .init();
+        
     let start_time = Instant::now();
 
     println!();
@@ -97,11 +125,11 @@ fn main() {
     println!("{}", "=============================".bright_red().bold());
     println!();
 
-    let args = Args::parse();
-    let config = ExtractConfig {
+    let config = AugerConfig {
         ff_sequence_length: args.ff_sequence,
         program_header_index: args.header_index,
         replace_non_printable: !args.raw,
+        recover_types: args.recover_types,
     };
 
     if args.dump_elf {
@@ -126,14 +154,13 @@ fn main() {
         }
     }
 
-    // extract text and instruction names
     match extract_from_file_with_parsers(
         &args.file,
         Some(config),
         vec![
-            Box::new(LLDProgramParser::new(None)),
-            Box::new(NativeProgramParser::new()),
-            Box::new(AnchorProgramParser::new()),
+            Box::new(LLDParser::new(None)),
+            Box::new(NativeParser::new()),
+            Box::new(AnchorParser::new()),
         ],
     ) {
         Ok(result) => {
@@ -298,6 +325,68 @@ fn main() {
                 }
             }
 
+            /*
+            println!(
+                "\n{} {}",
+                format!("Found {} string references:", result.strings.len())
+                    .bright_green()
+                    .bold(),
+                ""
+            );
+            for string_ref in &result.strings {
+                println!(
+                    "- 0x{:x}: {} (referenced by {} instructions)",
+                    string_ref.address,
+                    string_ref.content,
+                    string_ref.referenced_by.len()
+                );
+            }
+
+            println!(
+                "\n{} {}",
+                format!("Disassembly (first 20 instructions):")
+                    .bright_green()
+                    .bold(),
+                ""
+            );
+            for (_i, instr) in result.disassembly.iter().enumerate().take(20) {
+                println!("{}", instr);
+            }
+            if result.disassembly.len() > 20 {
+                println!("... and {} more instructions", result.disassembly.len() - 20);
+            }
+            */
+
+            if let Some(type_report) = &result.type_report {
+                println!(
+                    "\n{}",
+                    format!(
+                        "\n=================== {} ===================",
+                        " TYPES ".bright_white().on_bright_purple().italic()
+                    )
+                    .bright_purple()
+                    .bold()
+                );
+                
+                let report_lines: Vec<&str> = type_report.lines().collect();
+                let summary_lines = std::cmp::min(10, report_lines.len());
+                
+                for line in &report_lines[..summary_lines] {
+                    println!("{}", line);
+                }
+                
+                if report_lines.len() > summary_lines {
+                    println!("... and {} more lines in the type report", report_lines.len() - summary_lines);
+                }
+                
+                println!(
+                    "{}",
+                    "================================================="
+                        .bright_purple()
+                        .bold()
+                );
+            }
+
             match write_results(&result, &args.output) {
                 Ok(_) => {
                     let prefix = match &result.program_name {
@@ -322,6 +411,15 @@ fn main() {
                             .join(format!("{}manifest.json", prefix))
                             .display()
                     );
+                    
+                    if result.type_report.is_some() {
+                        println!(
+                            "- {}",
+                            args.output
+                                .join(format!("{}type_report.md", prefix))
+                                .display()
+                        );
+                    }
                 }
                 Err(e) => {
                     eprintln!("Error writing results: {}", e);

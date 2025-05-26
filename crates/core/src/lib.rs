@@ -1,83 +1,73 @@
 use std::path::Path;
 
 use anyhow::Result;
-use thiserror::Error;
 
-pub mod consts;
-pub mod demangler;
-pub mod hash;
-pub mod model;
-pub mod parser;
+pub mod models;
+// pub mod syn;
 pub mod utils;
-pub mod writer;
+pub mod consts;
+pub mod error;
+pub mod traits;
+pub mod memory;
+pub mod parsing;
+pub mod analyzers;
+pub mod resolvers;
+pub mod demangler;
 
-pub use model::{ExtractConfig, ExtractResult, ExtractStats, Instruction, SourceFile};
-pub use parser::{AnchorProgramParser, BpfParser, LLDProgramParser, NativeProgramParser, ProgramParser, ProgramType};
-pub use writer::FileWriter;
-
-#[derive(Error, Debug)]
-pub enum ExtractError {
-    #[error("Failed to read file: {0}")]
-    FileReadError(#[from] std::io::Error),
-    #[error("Failed to parse program: {0}")]
-    ProgramParseError(String),
-    #[error("Not enough program headers")]
-    NotEnoughProgramHeaders,
-    #[error("No text was extracted")]
-    NoTextExtracted,
-    #[error("Invalid file extension")]
-    InvalidFileExtension,
-    #[error("Failed to serialize to JSON: {0}")]
-    SerializationError(#[from] serde_json::Error),
-}
+pub use models::{AugerResult, AugerStats, AugerConfig, Instruction, SourceFile};
+pub use parsing::{BaseSBFParser, AnchorParser, LLDParser, NativeParser, SolanaProgramType};
+pub use utils::writer::{FileWriter, dump_elf_meta as dump_elf, write_results as compile_results};
+pub use traits::AugerParser;
+pub use memory::MemoryMap;
+pub use error::AugerError;
 
 pub fn extract_from_bytes(
     file_bytes: &[u8],
-    config: Option<ExtractConfig>,
-) -> Result<ExtractResult, ExtractError> {
+    config: Option<models::AugerConfig>,
+) -> Result<AugerResult, AugerError> {
     let config = config.unwrap_or_default();
-    parser::extract_from_bytes(file_bytes, config)
+    parsing::extract_from_bytes_handler(file_bytes, config)
 }
 
-/// Extracts valid text from an sBPF binary, and attempts to match instruction names
+/// Extracts valid text from a Solana binary, and attempts to match instruction names
 pub fn extract_from_file(
     file_path: &Path,
-    config: Option<ExtractConfig>,
-) -> Result<ExtractResult, ExtractError> {
+    config: Option<AugerConfig>,
+) -> Result<AugerResult, AugerError> {
     let config = config.unwrap_or_default();
 
     if file_path.extension().unwrap() != "so" {
-        return Err(ExtractError::InvalidFileExtension);
+        return Err(AugerError::InvalidFileExtension);
     }
 
     let file_bytes = std::fs::read(file_path)?;
-    parser::extract_from_bytes(file_bytes.as_slice(), config)
+    parsing::extract_from_bytes_handler(file_bytes.as_slice(), config)
 }
 
 /// Extracts valid text from an sBPF binary using custom parsers
 pub fn extract_from_file_with_parsers(
     file_path: &Path,
-    config: Option<ExtractConfig>,
-    parsers: Vec<Box<dyn ProgramParser>>,
-) -> Result<ExtractResult, ExtractError> {
+    config: Option<AugerConfig>,
+    parsers: Vec<Box<dyn AugerParser>>,
+) -> Result<AugerResult, AugerError> {
     let config = config.unwrap_or_default();
 
     if file_path.extension().unwrap() != "so" {
-        return Err(ExtractError::InvalidFileExtension);
+        return Err(AugerError::InvalidFileExtension);
     }
 
     let file_bytes = std::fs::read(file_path)?;
-    parser::extract_from_bytes_with_parsers(file_bytes.as_slice(), config, parsers)
+    parsing::extract_from_bytes_with_parsers_handler(file_bytes.as_slice(), config, parsers)
 }
 
 /// Dumps the ELF metadata to a JSON file
-pub fn dump_elf_meta(file_bytes: &[u8], base_path: &Path) -> Result<(), ExtractError> {
-    writer::dump_elf_meta(file_bytes, base_path)
+pub fn dump_elf_meta(file_bytes: &[u8], base_path: &Path) -> Result<(), AugerError> {
+    dump_elf(file_bytes, base_path)
 }
 
 /// Writes extraction results to files
-pub fn write_results(result: &ExtractResult, base_path: &Path) -> Result<(), ExtractError> {
-    writer::write_results(result, base_path)
+pub fn write_results(result: &AugerResult, base_path: &Path) -> Result<(), AugerError> {
+    compile_results(result, base_path)
 }
 
 #[cfg(test)]

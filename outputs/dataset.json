@@ -1,0 +1,16 @@
+{
+    "meta": {
+      "dataset_id": "VhFlsg5xm8YmHXY",
+      "name": "sBPF Binary Dataset",
+      "alias": "sbpf-dataset",
+      "description": "Dataset of sBPF (Solana Berkeley Packet Format) binaries, generated from native Rust programs and frameworks like Anchor and Pinnochio."
+    },
+    "outputs": [
+        {
+           "id": "",
+           "aliases": [],
+           "last_deployed_slot": 0,
+           "annotations": []
+        }
+    ]
+}

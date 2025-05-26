@@ -1,0 +1,41 @@
+{
+  "name": "www",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^1.2.0",
+    "@ai-sdk/google": "^1.2.1",
+    "@ai-sdk/openai": "^1.2.7",
+    "ai": "^4.1.66",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.294.0",
+    "next": "15.2.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-markdown": "^9.0.3",
+    "react-syntax-highlighter": "^15.5.0",
+    "remark-gfm": "^4.0.1",
+    "tailwind-merge": "^3.0.2",
+    "tailwindcss-animate": "^1.0.7",
+    "@tailwindcss/aspect-ratio": "^0.4.2",
+    "@tailwindcss/typography": "^0.5.16",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.2.3",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

@@ -20,7 +20,7 @@ use tower_http::cors::{Any, CorsLayer};
 use tracing::{info, warn, Level};
 use tracing_subscriber::{filter, prelude::*};
 
-use auger::{extract_from_bytes, ExtractConfig};
+use auger::{extract_from_bytes, AugerConfig};
 
 use auger_server::{
     api_key_auth, 
@@ -156,10 +156,11 @@ async fn destructure_handler(
 
     let extract_result = extract_from_bytes(
         program_data.as_slice(),
-        Some(ExtractConfig {
+        Some(AugerConfig {
             ff_sequence_length: 128,
             program_header_index: 0,
             replace_non_printable: true,
+            recover_types: false,
         }),
     )
     .map_err(|e| AppError::InternalError(format!("Failed to extract data: {:?}", e)))?;

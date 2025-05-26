@@ -2,23 +2,14 @@ use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum SymbolType {
-    /// regular function
     Function,
-    /// method on a struct/enum
     Method,
-    /// static method on a struct/enum (like a constructor)
     StaticMethod,
-    /// trait implementation function
     TraitImpl,
-    /// generic helper function/specialization
     GenericHelper,
-    /// operator overload
     Operator,
-    /// field or property accessor
     Accessor,
-    /// type definition or constructor
     TypeDef,
-    /// unknown/unidentified symbol type
     Unknown
 }
 

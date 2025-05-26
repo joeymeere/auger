@@ -83,8 +83,6 @@ impl Hash {
 
 /// Return a Sha256 hash for the given data.
 pub fn hashv(vals: &[&[u8]]) -> Hash {
-    // Perform the calculation inline, calling this from within a program is
-    // not supported
     let mut hasher = Hasher::default();
     hasher.hashv(vals);
     hasher.result()
@@ -99,6 +97,18 @@ pub fn sighash(namespace: &str, name: &str) -> [u8; 8] {
     let preimage = format!("{namespace}:{name}");
 
     let mut sighash = [0u8; 8];
-    sighash.copy_from_slice(&crate::hash::hash(preimage.as_bytes()).to_bytes()[..8]);
+    sighash.copy_from_slice(&hash(preimage.as_bytes()).to_bytes()[..8]);
     sighash
+}
+
+#[test]
+fn test_sighash() {
+    assert_eq!(
+        sighash("my-namespace", "my-function"),
+        hashv(&[
+            "my-namespace".as_bytes(),
+            "my-function".as_bytes(),
+        ])
+        .to_bytes()[..8]
+    );
 }

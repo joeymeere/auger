@@ -1,0 +1,164 @@
+{
+  "list": [
+    {
+      "name": "Raydium AMM v4",
+      "program_id": "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8"
+    },
+    {
+      "name": "Raydium AMM Routing",
+      "program_id": "routeUGWgWzqBWFcrCfv8tritsqukccJPu3q5GPP3xS"
+    },
+    {
+      "name": "Raydium Concetrated Liquidity",
+      "program_id": "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK"
+    },
+    {
+      "name": "Raydium CPMM",
+      "program_id": "CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C"
+    },
+    {
+      "name": "Meteora DLMM",
+      "program_id": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"
+    },
+    {
+      "name": "Meteora Pools",
+      "program_id": "Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EQVn5UaB"
+    },
+    {
+      "name": "Jupiter Aggregator v6",
+      "program_id": "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4"
+    },
+    {
+      "name": "Jupiter Perps",
+      "program_id": "PERPHjGBqRHArX4DySjwM6UJHiR3sWAatqfdBS2qQJu"
+    },
+    {
+      "name": "Obric v2",
+      "program_id": "obriQD1zbpyLz95G5n7nJe6a4DPjpFwa5XYPoNm113y"
+    },
+    {
+      "name": "Loopscale",
+      "program_id": "1oopBoJG58DgkUVKkEzKgyG9dvRmpgeEm1AVjoHkF78"
+    },
+    {
+      "name": "Fragmetric Liquid Staking",
+      "program_id": "fragnAis7Bp6FTsMoa6YcH8UffhEw43Ph79qAiK3iF3"
+    },
+    {
+      "name": "Photon",
+      "program_id": "BSfD6SHZigAfDWSjzD5Q41jw8LmKwtmjskPH9XW1mrRW"
+    },
+    {
+      "name": "Lfinity Swap v2",
+      "program_id": "2wT8Yq49kHgDzXuPxZSaeLaH1qbmGXtEyPy64bL7aD3c"
+    },
+    {
+      "name": "SolFi",
+      "program_id": "SoLFiHG9TfgtdUXUjWAxi3LtvYuFyDLVhBWxdMZxyCe"
+    },
+    {
+      "name": "Numeraire",
+      "program_id": "NUMERUNsFCP3kuNmWZuXtm1AaQCPj9uw6Guv2Ekoi5P"
+    },
+    {
+      "name": "Bloom Router",
+      "program_id": "b1oomGGqPKGD6errbyfbVMBuzSC8WtAAYo8MwNafWW1"
+    },
+    {
+      "name": "OKX Aggregator v2",
+      "program_id": "6m2CDdhRgxpH4WjvdzxAYbGxwdGUz5MziiL5jek2kBma"
+    },
+    {
+      "name": "Fluxbeam DEX",
+      "program_id": "FLUXubRmkEi2q6K3Y9kBPg9248ggaZVsoSFhtJHSrm1X"
+    },
+    {
+      "name": "Nova Bots Program",
+      "program_id": "NoVA1TmDUqksaj2hB1nayFkPysjJbFiU76dT4qPw2wm"
+    },
+    {
+      "name": "Tagged Searcher",
+      "program_id": "E6YoRP3adE5XYneSseLee15wJshDxCsmyD2WtLvAmfLi"
+    },
+    {
+      "name": "Unknown (Sniper)",
+      "program_id": "Axiom3a2w1UbMt2SMgqSvRiuJFTPusDhwKamNgPTeNQ9"
+    },
+    {
+      "name": "Unknown (Searcher)",
+      "program_id": "3zUNGc35p4YLjQ4uR7ph8fqV2ezEozFVzqVf2ThkV2Ps"
+    },
+    {
+      "name": "Unknown (Searcher)",
+      "program_id": "ams9tG5sJHh6ZDEuWrFZQUnoM6PGau5sMiMnomKBwui"
+    },
+    {
+      "name": "Unknown (Searcher)",
+      "program_id": "Crf6uiMVHpuqkQzE2FkWWces3xiYaTbTsFYPDSeNWksM"
+    },
+    {
+      "name": "Unknown (Searcher)",
+      "program_id": "B91piBSfCBRs5rUxCMRdJEGv7tNEnFxweWcdQJHJoFpi"
+    },
+    {
+      "name": "Unknown (Searcher)",
+      "program_id": "BoobsBSMpFRBA91sNwKLYShRRQPH5GjoCH4NhLUt4yRo"
+    },
+    {
+      "name": "Unknown (Searcher)",
+      "program_id": "RaTeUhvvohYGErSb2Sy3RA5EdMv9A9jtiJe8FHTg7uK"
+    },
+    {
+      "name": "Unknown (Searcher)",
+      "program_id": "smakEnVFKFy2fZG25bESNBgWuR6ZRnW1697qFZk4RTF"
+    },
+    {
+      "name": "Unknown (Searcher)",
+      "program_id": "8A2ap8YTUmCYbQztNZQnebE333PBuWQxztYNpvQ8RXKF"
+    },
+    {
+      "name": "Unknown (Searcher)",
+      "program_id": "6t83LoAjnk3ZLwUWR6bDBA2vDVRk5nyMG6mQsKRdUEZ7"
+    },
+    {
+      "name": "Unknown (Searcher)",
+      "program_id": "2VxcbQDXkbaLHzShMsJGieXGTd239FbNseX1Qx6yLW7V"
+    },
+    {
+      "name": "Unknown (Searcher)",
+      "program_id": "HEzM8TqVBvsgNKgqSbNkbL8J4Qq4DiRhz4NFXDKAKZiq"
+    },
+    {
+      "name": "Unknown (Searcher)",
+      "program_id": "2A6m4MBgk3xL6a8SBMdKmAmFc85tTLh4Ds6wy7dBxBxb"
+    },
+    {
+      "name": "Unknown (Searcher)",
+      "program_id": "6BduszSwvVomMSbdnBneZn9b8cKtJuJryZbFzH9K3Cqn"
+    },
+    {
+      "name": "Unknown (Searcher)",
+      "program_id": "CNCBEUHgsEwXRkc5ov5f42gnHnmtrmv3BoG7TdtyKMen"
+    },
+    {
+      "name": "Unknown (Searcher)",
+      "program_id": "DF3UvysXXHjn8iXTX24bQRiVNVpNg7AR3xv8CxDgvpaW"
+    },
+    {
+      "name": "Unknown (Searcher)",
+      "program_id": "DM2dmBUi2he1bot4xF7PaSGLorUjWLm2DMFsWiTPuXzb"
+    },
+    {
+      "name": "Unknown (Searcher)",
+      "program_id": "8i97DHS9KPnG311fSY9yin4cyk9ZzkBjLXobyEFvtfKY"
+    },
+    {
+      "name": "Unknown (Searcher)",
+      "program_id": "King7ki4SKMBPb3iupnQwTyjsq294jaXsgLmJo8cb7T"
+    },
+    {
+      "name": "Unknown (Searcher)",
+      "program_id": "DZ3urZy11RBNDKbRsrx7yUsgePoTcToBvTrjpPAySohx"
+    }
+  ]
+}

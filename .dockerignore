@@ -1,16 +1,13 @@
-# Git
 .git
 .gitignore
 target/
 **/*.rs.bk
 
-# Editor files
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# Misc
 .DS_Store
 *.log
 tmp/ 
